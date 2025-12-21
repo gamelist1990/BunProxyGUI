@@ -1,0 +1,2 @@
+# BunProxyGUI
+BunProxyのGUI版ですブラウザ上から操作できます
