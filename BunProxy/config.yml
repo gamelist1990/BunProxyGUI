@@ -1,0 +1,13 @@
+endpoint: 6000
+useRestApi: false
+savePlayerIP: true
+listeners:
+  - bind: 0.0.0.0
+    tcp: 25565
+    udp: 25565
+    haproxy: true
+    webhook: "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
+    target:
+      host: localhost  # または 127.0.0.1、100.94.26.8 (Tailscale)など
+      tcp: 19132
+      udp: 19132

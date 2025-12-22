@@ -1,0 +1,216 @@
+export interface BunProxyInstance {
+  id: string;
+  name: string;
+  version: string;
+  platform: 'linux' | 'darwin-arm64' | 'windows';
+  binaryPath: string;
+  dataDir: string;
+  configPath: string;
+  pid?: number;
+  lastStarted?: string;
+  autoRestart: boolean;
+  downloadSource: {
+    url: string;
+    sha256: string;
+  };
+}
+
+export interface LogEntry {
+  timestamp: string;
+  type: 'stdout' | 'stderr' | 'system';
+  message: string;
+}
+
+export interface BunProxyConfig {
+  endpoint?: number;
+  useRestApi?: boolean;
+  savePlayerIP?: boolean;
+  listeners?: Array<{
+    bind?: string;
+    tcp?: number;
+    udp?: number;
+    haproxy?: boolean;
+    webhook?: string;
+    target?: {
+      host?: string;
+      tcp?: number;
+      udp?: number;
+    };
+  }>;
+}
+
+export interface Release {
+  version: string;
+  tag: string;
+  publishedAt: string;
+  assets: Array<{
+    name: string;
+    url: string;
+    downloadUrl: string;
+    size: number;
+  }>;
+}
+
+// API functions
+const API_BASE = '/api';
+
+export async function fetchInstances(): Promise<BunProxyInstance[]> {
+  const res = await fetch(`${API_BASE}/instances`);
+  if (!res.ok) throw new Error('Failed to fetch instances');
+  return res.json();
+}
+
+export async function fetchInstance(id: string): Promise<BunProxyInstance> {
+  const res = await fetch(`${API_BASE}/instances/${id}`);
+  if (!res.ok) throw new Error('Failed to fetch instance');
+  return res.json();
+}
+
+export async function createInstance(data: {
+  name: string;
+  platform: string;
+  version: string;
+}): Promise<BunProxyInstance> {
+  const res = await fetch(`${API_BASE}/instances`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create instance');
+  return res.json();
+}
+
+export async function deleteInstance(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to delete instance' }));
+    throw new Error(error.error || 'Failed to delete instance');
+  }
+}
+
+export async function startInstance(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}/start`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to start instance' }));
+    throw new Error(error.error || 'Failed to start instance');
+  }
+}
+
+export async function stopInstance(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}/stop`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to stop instance' }));
+    throw new Error(error.error || 'Failed to stop instance');
+  }
+}
+
+export async function restartInstance(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}/restart`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to restart instance' }));
+    throw new Error(error.error || 'Failed to restart instance');
+  }
+}
+
+export async function fetchLogs(id: string, limit?: number): Promise<LogEntry[]> {
+  const url = limit ? `${API_BASE}/instances/${id}/logs?limit=${limit}` : `${API_BASE}/instances/${id}/logs`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch logs');
+  return res.json();
+}
+
+export async function fetchConfig(id: string): Promise<BunProxyConfig> {
+  const res = await fetch(`${API_BASE}/instances/${id}/config`);
+  if (!res.ok) throw new Error('Failed to fetch config');
+  return res.json();
+}
+
+export async function updateConfig(id: string, config: BunProxyConfig): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.errors?.join(', ') || 'Failed to update config');
+  }
+}
+
+export async function checkUpdates(): Promise<any> {
+  const res = await fetch(`${API_BASE}/updates/check`);
+  if (!res.ok) throw new Error('Failed to check updates');
+  return res.json();
+}
+
+export async function fetchLatestRelease(): Promise<Release> {
+  const res = await fetch(`${API_BASE}/releases/latest`);
+  if (!res.ok) throw new Error('Failed to fetch latest release');
+  return res.json();
+}
+
+// Auth API
+export interface AuthStatus {
+  hasAuth: boolean;
+  isAuthenticated: boolean;
+  requireAuth: boolean;
+}
+
+export async function checkAuthStatus(): Promise<AuthStatus> {
+  const res = await fetch(`${API_BASE}/auth/status`);
+  if (!res.ok) throw new Error('Failed to check auth status');
+  return res.json();
+}
+
+export async function login(username: string, password: string): Promise<{ success: boolean; token: string }> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Login failed' }));
+    throw new Error(error.error || 'Login failed');
+  }
+  return res.json();
+}
+
+export async function logout(): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Logout failed');
+}
+
+export async function setupAuth(username: string, password: string): Promise<{ success: boolean; token: string }> {
+  const res = await fetch(`${API_BASE}/auth/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Setup failed' }));
+    throw new Error(error.error || 'Setup failed');
+  }
+  return res.json();
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/change-password`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Password change failed' }));
+    throw new Error(error.error || 'Password change failed');
+  }
+}

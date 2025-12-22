@@ -1,0 +1,15 @@
+node_modules
+bun.lock
+bun.lockb
+package-lock.json
+dist/
+public/
+instances/
+services.json
+*.log
+.DS_Store
+.env
+.env.local
+bunproxy-gui
+bunproxy-gui-*
+bunproxy-gui.exe
