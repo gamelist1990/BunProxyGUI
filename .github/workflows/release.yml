@@ -48,6 +48,9 @@ jobs:
       - name: Build frontend
         run: bun run build:frontend
 
+      - name: Generate embedded files manifest
+        run: bun run generate:embed
+
       - name: Read version from version.ini
         id: read_version
         run: |
