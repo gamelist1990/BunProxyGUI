@@ -51,15 +51,25 @@ bun run start
 
 ### スタンドアロン実行ファイルの作成
 
+BunProxyGUIは、フロントエンドの静的ファイルを埋め込んだスタンドアロン実行ファイルとして配布できます。
+
 ```bash
+# まずフロントエンドをビルド
+bun run build:frontend
+
 # 現在のプラットフォーム用
 bun run build:compile
 
-# すべてのプラットフォーム用
+# すべてのプラットフォーム用（Linux/macOS/Windows）
 bun run build:all
 ```
 
-生成されたバイナリを実行するだけで、Node.js/Bunのインストール不要で動作します。
+生成されたバイナリを実行するだけで、Node.js/Bunのインストール不要で動作します。フロントエンドの静的ファイルもバイナリに埋め込まれているため、`public`ディレクトリも不要です。
+
+**ビルドされるファイル:**
+- `bunproxy-gui-linux` - Linux x64
+- `bunproxy-gui-darwin` - macOS ARM64
+- `bunproxy-gui-windows.exe` - Windows x64
 
 ## 使い方
 

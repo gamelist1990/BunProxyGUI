@@ -22,6 +22,9 @@ import {
   getKnownSha256,
 } from './downloader.js';
 
+// Import embedded files for compiled binary
+import './embed-files.js';
+
 const PORT = process.env.PORT || 3000;
 const WS_PORT = process.env.WS_PORT || 3001;
 
@@ -38,7 +41,66 @@ const authManager = new AuthManager(serviceManager);
 app.use(express.json());
 app.use(cookieParser());
 app.use(authManager.authMiddleware());
-app.use(express.static('public'));
+
+const isCompiled = Bun.main.endsWith('.exe') || (!Bun.main.includes('/src/') && !Bun.main.includes('\\src\\'));
+
+//Bun compiledの場合
+if (isCompiled) {
+  console.log(chalk.blue('Using embedded static files'));
+  
+  const staticRoutes: Record<string, Blob> = {};
+  for (const blob of Bun.embeddedFiles) {
+    // @ts-ignore - Bun.embeddedFiles contains Blobs with name property
+    let name = blob.name as string;
+    
+    if (name.startsWith('public/')) {
+      name = name.substring(7); 
+    }
+    
+    staticRoutes[`/${name}`] = blob;
+    
+    if (name.startsWith('index-')) {
+      staticRoutes[`/assets/${name}`] = blob;
+    }
+    
+    console.log(chalk.gray(`Embedded: /${name} (${blob.size} bytes)`));
+  }
+  
+  app.use(async (req, res, next) => {
+    let requestPath = req.path;
+    
+    // Redirect root to index.html
+    if (requestPath === '/') {
+      requestPath = '/index.html';
+    }
+    
+    const blob = staticRoutes[requestPath];
+    
+    if (blob) {
+      const content = await blob.arrayBuffer();
+      const buffer = Buffer.from(content);
+      
+      // Set appropriate content type
+      let contentType = 'application/octet-stream';
+      if (requestPath.endsWith('.html')) contentType = 'text/html';
+      else if (requestPath.endsWith('.js')) contentType = 'application/javascript';
+      else if (requestPath.endsWith('.css')) contentType = 'text/css';
+      else if (requestPath.endsWith('.json')) contentType = 'application/json';
+      else if (requestPath.endsWith('.svg')) contentType = 'image/svg+xml';
+      else if (requestPath.endsWith('.png')) contentType = 'image/png';
+      else if (requestPath.endsWith('.jpg') || requestPath.endsWith('.jpeg')) contentType = 'image/jpeg';
+      
+      res.setHeader('Content-Type', contentType);
+      res.send(buffer);
+    } else {
+      next();
+    }
+  });
+} else {
+  // In development, serve from regular public directory
+  console.log(chalk.blue('Using regular public directory'));
+  app.use(express.static('public'));
+}
 
 // WebSocket connection handling
 const clients: Set<WebSocket> = new Set();

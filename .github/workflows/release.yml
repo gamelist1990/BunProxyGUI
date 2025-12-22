@@ -42,6 +42,12 @@ jobs:
       - name: Install dependencies
         run: bun i
 
+      - name: Install frontend dependencies
+        run: cd frontend && bun i
+
+      - name: Build frontend
+        run: bun run build:frontend
+
       - name: Read version from version.ini
         id: read_version
         run: |
@@ -64,11 +70,11 @@ jobs:
           DEFINE_BUILD_VERSION='"'"${version}"'"'
           DEFINE_BUILD_TIME='"'"${build_time}"'"'
           # Linux
-          bun build --compile --target=bun-linux-x64 src/index.ts --outfile build/BunProxyGUI-${version}-linux --define BUILD_VERSION="\"${version}\"" --define BUILD_TIME="\"${build_time}\""
+          bun build --compile --minify --asset-naming="[name].[ext]" --target=bun-linux-x64 src/index.ts --outfile build/BunProxyGUI-${version}-linux --define BUILD_VERSION="\"${version}\"" --define BUILD_TIME="\"${build_time}\""
           # Windows (exe extension)
-          bun build --compile --target=bun-windows-x64 src/index.ts --outfile build/BunProxyGUI-${version}-windows.exe --define BUILD_VERSION="\"${version}\"" --define BUILD_TIME="\"${build_time}\""
+          bun build --compile --minify --asset-naming="[name].[ext]" --target=bun-windows-x64 src/index.ts --outfile build/BunProxyGUI-${version}-windows.exe --define BUILD_VERSION="\"${version}\"" --define BUILD_TIME="\"${build_time}\""
           # MacOS Arm
-          bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile build/BunProxyGUI-${version}-darwin-arm64 --define BUILD_VERSION="\"${version}\"" --define BUILD_TIME="\"${build_time}\""
+          bun build --compile --minify --asset-naming="[name].[ext]" --target=bun-darwin-arm64 src/index.ts --outfile build/BunProxyGUI-${version}-darwin-arm64 --define BUILD_VERSION="\"${version}\"" --define BUILD_TIME="\"${build_time}\""
           # Expose outputs
           echo "BINARY_LINUX=build/BunProxyGUI-${version}-linux" >> $GITHUB_OUTPUT
           echo "BINARY_WINDOWS=build/BunProxyGUI-${version}-windows.exe" >> $GITHUB_OUTPUT
