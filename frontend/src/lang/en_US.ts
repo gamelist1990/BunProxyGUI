@@ -1,6 +1,6 @@
 export const en_US = {
   // Header
-  appTitle: '🎮 BunProxy GUI',
+  appTitle: 'BunProxy GUI',
   connected: '● Connected',
   disconnected: '○ Disconnected',
   checkUpdates: 'Check Updates',
@@ -83,6 +83,9 @@ export const en_US = {
   loginFailed: 'Login failed. Please check your credentials.',
   setupSuccess: 'Authentication setup successfully!',
   passwordChanged: 'Password changed successfully!',
+  securitySetup: 'Security Setup',
+  noAuthConfigured: 'No authentication configured',
+  setupAuthPrompt: 'Please set up a username and password to prevent unauthorized access.',
 };
 
 export type Translation = typeof en_US;

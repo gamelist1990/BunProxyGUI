@@ -21,6 +21,8 @@ import {
 } from './api';
 import { t, setLanguage, getLanguage, type Language } from './lang';
 import { Login } from './components/Login';
+import { ConfigEditor } from './components/ConfigEditor';
+import { formatLogMessage } from './utils/ansi';
 
 function App() {
   const [instances, setInstances] = useState<BunProxyInstance[]>([]);
@@ -256,6 +258,20 @@ function App() {
     return <Login onLogin={handleLogin} isSetup={!authStatus?.hasAuth} />;
   }
 
+  // Show setup prompt if no auth configured
+  if (!authStatus?.hasAuth && authStatus?.isAuthenticated) {
+    return (
+      <div className="app setup-prompt">
+        <div className="setup-card">
+          <h2>🔒 {t('securitySetup')}</h2>
+          <p>{t('noAuthConfigured')}</p>
+          <p>{t('setupAuthPrompt')}</p>
+          <Login onLogin={handleLogin} isSetup={true} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header>
@@ -354,7 +370,10 @@ function App() {
                         <div key={i} className={`log-entry log-${log.type}`}>
                           <span className="log-time">{new Date(log.timestamp).toLocaleTimeString()}</span>
                           <span className="log-type">[{log.type === 'stdout' ? t('logStdout') : log.type === 'stderr' ? t('logStderr') : t('logSystem')}]</span>
-                          <span className="log-message">{log.message}</span>
+                          <span 
+                            className="log-message"
+                            dangerouslySetInnerHTML={{ __html: formatLogMessage(log.message) }}
+                          />
                         </div>
                       ))}
                     </div>
@@ -363,18 +382,11 @@ function App() {
                   <section className="config">
                     <h3>{t('configuration')}</h3>
                     {config && (
-                      <div className="config-editor">
-                        <textarea
-                          value={JSON.stringify(config, null, 2)}
-                          onChange={(e) => {
-                            try {
-                              setConfig(JSON.parse(e.target.value));
-                            } catch {}
-                          }}
-                          rows={20}
-                        />
-                        <button onClick={handleSaveConfig}>{t('saveConfig')}</button>
-                      </div>
+                      <ConfigEditor 
+                        config={config}
+                        onChange={setConfig}
+                        onSave={handleSaveConfig}
+                      />
                     )}
                   </section>
                 </div>

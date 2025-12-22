@@ -2,7 +2,7 @@ import type { Translation } from './en_US';
 
 export const ja_JP: Translation = {
   // Header
-  appTitle: '🎮 BunProxy GUI',
+  appTitle: 'BunProxy GUI',
   connected: '● 接続中',
   disconnected: '○ 切断',
   checkUpdates: '更新確認',
@@ -85,4 +85,7 @@ export const ja_JP: Translation = {
   loginFailed: 'ログインに失敗しました。認証情報を確認してください。',
   setupSuccess: '認証が正常に設定されました！',
   passwordChanged: 'パスワードが正常に変更されました！',
+  securitySetup: 'セキュリティ設定',
+  noAuthConfigured: '認証が設定されていません',
+  setupAuthPrompt: '不正アクセスを防ぐため、ユーザー名とパスワードを設定してください。',
 };
