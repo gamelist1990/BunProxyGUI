@@ -14,6 +14,7 @@ import {
   updateConfig,
   checkUpdates,
   fetchLatestRelease,
+  fetchAllReleases,
   checkAuthStatus,
   login,
   logout,
@@ -30,7 +31,9 @@ function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [config, setConfig] = useState<BunProxyConfig | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [initializingInstances, setInitializingInstances] = useState<Set<string>>(new Set());
   const [latestVersion, setLatestVersion] = useState<string>('');
+  const [availableVersions, setAvailableVersions] = useState<string[]>([]);
   const [language, setLang] = useState<Language>(getLanguage());
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -76,7 +79,7 @@ function App() {
       
       if (status.isAuthenticated) {
         loadInstances();
-        loadLatestRelease();
+        loadReleases();
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -107,7 +110,7 @@ function App() {
   useEffect(() => {
     if (authStatus?.isAuthenticated) {
       loadInstances();
-      loadLatestRelease();
+      loadReleases();
     }
   }, [authStatus]);
 
@@ -120,6 +123,17 @@ function App() {
       on('instanceStarted', () => loadInstances()),
       on('instanceStopped', () => loadInstances()),
       on('instanceRestarted', () => loadInstances()),
+      on('instanceInitializing', (data: any) => {
+        setInitializingInstances(prev => new Set(prev).add(data.instanceId));
+      }),
+      on('instanceInitialized', (data: any) => {
+        setInitializingInstances(prev => {
+          const next = new Set(prev);
+          next.delete(data.instanceId);
+          return next;
+        });
+        loadInstances();
+      }),
       on('log', (data: any) => {
         if (data.instanceId === selectedInstance) {
           setLogs((prev) => [
@@ -132,6 +146,9 @@ function App() {
         if (data.instanceId === selectedInstance) {
           setConfig(data.config);
         }
+      }),
+      on('rateLimitError', (data: any) => {
+        alert(`⚠️ ${data.message}`);
       }),
     ];
 
@@ -155,12 +172,19 @@ function App() {
     }
   }
 
-  async function loadLatestRelease() {
+  async function loadReleases() {
     try {
-      const release = await fetchLatestRelease();
-      setLatestVersion(release.version);
+      const [latest, allReleases] = await Promise.all([
+        fetchLatestRelease(),
+        fetchAllReleases(),
+      ]);
+      setLatestVersion(latest.version);
+      setAvailableVersions(allReleases.map(r => r.version));
     } catch (error) {
       console.error(t('errorLoadRelease'), error);
+      // エラーが発生した場合はデフォルトバージョンを使用
+      setLatestVersion('0.0.5');
+      setAvailableVersions(['0.0.5']);
     }
   }
 
@@ -189,7 +213,11 @@ function App() {
       setNewInstanceForm({ name: '', platform: 'linux', version: '0.0.5' });
       await loadInstances();
     } catch (error: any) {
-      alert(`${t('errorCreateInstance')} ${error.message}`);
+      if (error.message && error.message.includes('レート制限')) {
+        alert(`⚠️ ${error.message}\n\n新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。`);
+      } else {
+        alert(`${t('errorCreateInstance')} ${error.message}`);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -253,7 +281,11 @@ function App() {
         alert(t('allUpToDate'));
       }
     } catch (error: any) {
-      alert(`${t('errorCheckUpdates')} ${error.message}`);
+      if (error.message && (error.message.includes('rate limit') || error.message.includes('レート制限'))) {
+        alert(`⚠️ GitHub APIのレート制限に達しました。\n\n更新確認ができません。しばらく待ってから再度試してください。`);
+      } else {
+        alert(`${t('errorCheckUpdates')} ${error.message}`);
+      }
     }
   }
 
@@ -317,13 +349,13 @@ function App() {
             {instances.map((instance) => (
               <div
                 key={instance.id}
-                className={`instance-item ${selectedInstance === instance.id ? 'selected' : ''}`}
+                className={`instance-item ${selectedInstance === instance.id ? 'selected' : ''} ${initializingInstances.has(instance.id) ? 'initializing' : ''}`}
                 onClick={() => setSelectedInstance(instance.id)}
               >
                 <div className="instance-info">
                   <strong>{instance.name}</strong>
                   <span className="instance-status">
-                    {instance.pid ? t('running') : t('stopped')}
+                    {initializingInstances.has(instance.id) ? t('initializing') : instance.pid ? t('running') : t('stopped')}
                   </span>
                   <small>{instance.platform} v{instance.version}</small>
                 </div>
@@ -347,12 +379,17 @@ function App() {
               <option value="darwin-arm64">{t('platformMacOS')}</option>
               <option value="windows">{t('platformWindows')}</option>
             </select>
-            <input
-              type="text"
-              placeholder={t('placeholderVersion')}
+            <select
               value={newInstanceForm.version}
               onChange={(e) => setNewInstanceForm({ ...newInstanceForm, version: e.target.value })}
-            />
+            >
+              <option value="latest">{t('latestVersion') || 'Latest'} ({latestVersion})</option>
+              {availableVersions.map((version) => (
+                <option key={version} value={version}>
+                  {version}
+                </option>
+              ))}
+            </select>
             <button onClick={handleCreateInstance} disabled={isCreating || !newInstanceForm.name}>
               {isCreating ? t('creating') : t('createInstance')}
             </button>

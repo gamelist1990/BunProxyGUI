@@ -11,7 +11,7 @@ interface ListenerItemProps {
   listener: ListenerConfig;
   onChange: (field: string, value: any) => void;
   onTargetChange: (field: string, value: any) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
 }
 
 export const ListenerItem: React.FC<ListenerItemProps> = ({
@@ -25,9 +25,11 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
     <Card
       title={`Listener #${index + 1}`}
       actions={
-        <Button variant="danger" onClick={onRemove} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-          {t('delete') || 'Delete'}
-        </Button>
+        onRemove ? (
+          <Button variant="danger" onClick={onRemove} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+            {t('delete') || 'Delete'}
+          </Button>
+        ) : undefined
       }
     >
       <div className="ui-grid">

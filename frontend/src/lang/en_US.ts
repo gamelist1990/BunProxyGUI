@@ -12,6 +12,7 @@ export const en_US = {
   instanceName: 'Instance name',
   platform: 'Platform',
   version: 'Version',
+  latestVersion: 'Latest Version',
   createInstance: 'Create Instance',
   creating: 'Creating...',
 
@@ -23,6 +24,7 @@ export const en_US = {
   // Instance status
   running: '🟢 Running',
   stopped: '⚫ Stopped',
+  initializing: '⚙️ Initializing...',
 
   // Instance actions
   start: 'Start',
@@ -99,6 +101,8 @@ export const en_US = {
   targetHost: 'Target Host',
   showForm: 'Show Form',
   showJson: 'Show JSON',
+  singleListenerOnly: 'Single listener only supported',
+  noListenersConfigured: 'No listeners configured',
 };
 
 export type Translation = typeof en_US;

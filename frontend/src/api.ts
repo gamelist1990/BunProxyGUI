@@ -159,6 +159,12 @@ export async function fetchLatestRelease(): Promise<Release> {
   return res.json();
 }
 
+export async function fetchAllReleases(): Promise<Release[]> {
+  const res = await fetch(`${API_BASE}/releases`);
+  if (!res.ok) throw new Error('Failed to fetch releases');
+  return res.json();
+}
+
 // Auth API
 export interface AuthStatus {
   hasAuth: boolean;

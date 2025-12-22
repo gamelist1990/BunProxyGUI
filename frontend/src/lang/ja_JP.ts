@@ -14,6 +14,7 @@ export const ja_JP: Translation = {
   instanceName: 'インスタンス名',
   platform: 'プラットフォーム',
   version: 'バージョン',
+  latestVersion: '最新バージョン',
   createInstance: 'インスタンス作成',
   creating: '作成中...',
 
@@ -25,6 +26,7 @@ export const ja_JP: Translation = {
   // Instance status
   running: '🟢 実行中',
   stopped: '⚫ 停止中',
+  initializing: '⚙️ 初期化中...',
 
   // Instance actions
   start: '起動',
@@ -101,4 +103,6 @@ export const ja_JP: Translation = {
   targetHost: 'ターゲットホスト',
   showForm: 'フォーム表示',
   showJson: 'JSON表示',
+  singleListenerOnly: 'リスナーは1つのみサポート',
+  noListenersConfigured: 'リスナーが設定されていません',
 };

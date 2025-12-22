@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import path from 'path';
+import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 import chalk from 'chalk';
 import { ServiceManager, BunProxyInstance } from './services.js';
@@ -12,6 +13,8 @@ import { AuthManager } from './authManager.js';
 import {
   getLatestRelease,
   getReleaseByVersion,
+  getAllReleases,
+  isGitHubRateLimited,
   downloadBinary,
   verifySha256,
   setExecutablePermissions,
@@ -245,10 +248,16 @@ app.get('/api/instances/:id', async (req, res) => {
 // Create new instance (download and setup)
 app.post('/api/instances', async (req, res) => {
   try {
-    const { name, platform, version } = req.body;
+    let { name, platform, version } = req.body;
 
     if (!name || !platform || !version) {
       return res.status(400).json({ error: 'Missing required fields: name, platform, version' });
+    }
+
+    // Convert "latest" to actual version
+    if (version === 'latest') {
+      const latestRelease = await getLatestRelease();
+      version = latestRelease.version;
     }
 
     const instanceId = randomUUID();
@@ -296,7 +305,7 @@ app.post('/api/instances', async (req, res) => {
       version,
       platform,
       binaryPath,
-      dataDir: instanceDir,
+      dataDir: instanceDir, // Working directory - config.ymlがここにある
       configPath,
       autoRestart: false,
       downloadSource: {
@@ -312,9 +321,51 @@ app.post('/api/instances', async (req, res) => {
       instance,
     });
 
+    // 初回起動してBunProxyにconfig.ymlを生成させる
+    console.log(chalk.blue(`Initializing instance ${instanceId}...`));
+    broadcast({
+      type: 'instanceInitializing',
+      instanceId,
+    });
+
+    try {
+      const pid = processManager.start(instanceId, {
+        binaryPath: instance.binaryPath,
+        workingDirectory: instance.dataDir,
+      });
+      
+      // config.ymlが生成されるまで少し待つ
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 初期化完了後、停止
+      if (processManager.isRunning(instanceId)) {
+        processManager.stop(instanceId);
+        console.log(chalk.green(`✓ Instance initialized and stopped`));
+      }
+    } catch (error: any) {
+      console.warn(chalk.yellow(`Warning: Could not initialize instance: ${error.message}`));
+    }
+
+    broadcast({
+      type: 'instanceInitialized',
+      instanceId,
+    });
+
     res.json(instance);
   } catch (error: any) {
     console.error(chalk.red(`Error creating instance: ${error.message}`));
+    
+    if (error.message && error.message.includes('rate limit')) {
+      broadcast({
+        type: 'rateLimitError',
+        message: 'GitHub APIのレート制限に達しました。新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。',
+      });
+      return res.status(429).json({ 
+        error: 'GitHub APIレート制限に達しました。新規インスタンスの作成ができません。',
+        rateLimited: true,
+      });
+    }
+    
     res.status(500).json({ error: error.message });
   }
 });
@@ -323,6 +374,11 @@ app.post('/api/instances', async (req, res) => {
 app.delete('/api/instances/:id', async (req, res) => {
   try {
     const instanceId = req.params.id;
+    const instance = serviceManager.getById(instanceId);
+
+    if (!instance) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
 
     // Stop process if running
     if (processManager.isRunning(instanceId)) {
@@ -334,6 +390,14 @@ app.delete('/api/instances/:id', async (req, res) => {
 
     // Remove from services
     await serviceManager.remove(instanceId);
+
+    // Delete instance directory
+    try {
+      await fs.rm(instance.dataDir, { recursive: true, force: true });
+      console.log(chalk.green(`✓ Deleted instance directory: ${instance.dataDir}`));
+    } catch (error: any) {
+      console.warn(chalk.yellow(`Warning: Could not delete instance directory: ${error.message}`));
+    }
 
     broadcast({
       type: 'instanceRemoved',
@@ -526,6 +590,27 @@ app.get('/api/releases/latest', async (req, res) => {
   try {
     const release = await getLatestRelease();
     res.json(release);
+  } catch (error: any) {
+    console.error('Failed to fetch latest release:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/releases', async (req, res) => {
+  try {
+    const releases = await getAllReleases();
+    res.json(releases);
+  } catch (error: any) {
+    console.error('Failed to fetch releases:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check rate limit status
+app.get('/api/rate-limit-status', async (req, res) => {
+  try {
+    const isLimited = isGitHubRateLimited();
+    res.json({ rateLimited: isLimited });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
