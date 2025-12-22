@@ -21,22 +21,24 @@ export interface LogEntry {
   message: string;
 }
 
+export interface ListenerConfig {
+  bind?: string;
+  tcp?: number;
+  udp?: number;
+  haproxy?: boolean;
+  webhook?: string;
+  target?: {
+    host?: string;
+    tcp?: number;
+    udp?: number;
+  };
+}
+
 export interface BunProxyConfig {
   endpoint?: number;
   useRestApi?: boolean;
   savePlayerIP?: boolean;
-  listeners?: Array<{
-    bind?: string;
-    tcp?: number;
-    udp?: number;
-    haproxy?: boolean;
-    webhook?: string;
-    target?: {
-      host?: string;
-      tcp?: number;
-      udp?: number;
-    };
-  }>;
+  listeners?: Array<ListenerConfig>;
 }
 
 export interface Release {

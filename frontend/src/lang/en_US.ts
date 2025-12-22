@@ -86,6 +86,19 @@ export const en_US = {
   securitySetup: 'Security Setup',
   noAuthConfigured: 'No authentication configured',
   setupAuthPrompt: 'Please set up a username and password to prevent unauthorized access.',
+
+  // Config Editor
+  generalSettings: 'General Settings',
+  endpointPort: 'Endpoint Port',
+  enableRestApi: 'Enable REST API',
+  savePlayerIp: 'Save Player IP',
+  listeners: 'Listeners',
+  addListener: 'Add Listener',
+  bindAddress: 'Bind Address',
+  targetServer: 'Target Server',
+  targetHost: 'Target Host',
+  showForm: 'Show Form',
+  showJson: 'Show JSON',
 };
 
 export type Translation = typeof en_US;

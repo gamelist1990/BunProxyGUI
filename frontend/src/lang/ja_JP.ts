@@ -88,4 +88,17 @@ export const ja_JP: Translation = {
   securitySetup: 'セキュリティ設定',
   noAuthConfigured: '認証が設定されていません',
   setupAuthPrompt: '不正アクセスを防ぐため、ユーザー名とパスワードを設定してください。',
+
+  // Config Editor
+  generalSettings: '基本設定',
+  endpointPort: 'エンドポイントポート',
+  enableRestApi: 'REST APIを有効化',
+  savePlayerIp: 'プレイヤーIPを保存',
+  listeners: 'リスナー',
+  addListener: 'リスナーを追加',
+  bindAddress: 'バインドアドレス',
+  targetServer: 'ターゲットサーバー',
+  targetHost: 'ターゲットホスト',
+  showForm: 'フォーム表示',
+  showJson: 'JSON表示',
 };

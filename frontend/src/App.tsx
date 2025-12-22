@@ -35,6 +35,12 @@ function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved as 'light' | 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+  
   const [newInstanceForm, setNewInstanceForm] = useState({
     name: '',
     platform: 'linux' as 'linux' | 'darwin-arm64' | 'windows',
@@ -46,6 +52,15 @@ function App() {
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
     setLang(lang);
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
   // Check auth status on mount
@@ -284,6 +299,9 @@ function App() {
             <option value="ja_JP">日本語</option>
             <option value="en_US">English</option>
           </select>
+          <button onClick={toggleTheme} title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
           <button onClick={handleCheckUpdates}>{t('checkUpdates')}</button>
           {latestVersion && <span>{t('latest')}: v{latestVersion}</span>}
           {authStatus?.hasAuth && (
