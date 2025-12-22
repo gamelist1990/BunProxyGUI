@@ -41,6 +41,15 @@ export interface BunProxyConfig {
   listeners?: Array<ListenerConfig>;
 }
 
+export interface PlayerIPEntry {
+  username: string;
+  ips: Array<{
+    ip: string;
+    protocol: string;
+    lastSeen: number;
+  }>;
+}
+
 export interface Release {
   version: string;
   tag: string;
@@ -144,6 +153,24 @@ export async function updateConfig(id: string, config: BunProxyConfig): Promise<
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.errors?.join(', ') || 'Failed to update config');
+  }
+}
+
+export async function fetchPlayerIPs(id: string): Promise<PlayerIPEntry[]> {
+  const res = await fetch(`${API_BASE}/instances/${id}/player-ips`);
+  if (!res.ok) throw new Error('Failed to fetch player IPs');
+  return res.json();
+}
+
+export async function updateInstance(id: string, version: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to update instance' }));
+    throw new Error(error.error || 'Failed to update instance');
   }
 }
 

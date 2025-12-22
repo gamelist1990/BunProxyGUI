@@ -16,7 +16,7 @@
     "start": "bun dist/index.js",
     "build:frontend": "cd frontend && bun run build",
     "dev:frontend": "cd frontend && bun run dev",
-    "alldev": "bun run build:frontend && bun run dev"
+    "alldev": "bun run build:frontend && bun run generate:embed && bun run dev"
   },
   "keywords": [
     "bunproxy",

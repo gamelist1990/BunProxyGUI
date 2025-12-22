@@ -618,6 +618,41 @@ app.get('/api/instances/:id/config', async (req, res) => {
   }
 });
 
+// Get instance player IPs
+app.get('/api/instances/:id/player-ips', async (req, res) => {
+  try {
+    const instanceId = req.params.id;
+    const instance = serviceManager.getById(instanceId);
+
+    if (!instance) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
+
+    // playerIP.jsonのパスを取得
+    const playerIPPath = path.join(instance.dataDir, 'playerIP.json');
+    
+    try {
+      // ファイルが存在するかチェック
+      await fs.access(playerIPPath);
+      
+      // ファイルを読み込む
+      const content = await fs.readFile(playerIPPath, 'utf-8');
+      const playerIPs = JSON.parse(content);
+      
+      res.json(playerIPs);
+    } catch (error: any) {
+      // ファイルが存在しない、または読み込めない場合は空配列を返す
+      if (error.code === 'ENOENT') {
+        res.json([]);
+      } else {
+        throw error;
+      }
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update instance config
 app.put('/api/instances/:id/config', async (req, res) => {
   try {
@@ -700,6 +735,116 @@ app.get('/api/rate-limit-status', async (req, res) => {
     const isLimited = isGitHubRateLimited();
     res.json({ rateLimited: isLimited });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update instance
+app.post('/api/instances/:id/update', async (req, res) => {
+  try {
+    const instanceId = req.params.id;
+    const { version } = req.body;
+    
+    const instance = serviceManager.getById(instanceId);
+    if (!instance) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
+
+    // インスタンスが停止中かチェック
+    if (processManager.isRunning(instanceId)) {
+      return res.status(400).json({ error: 'Instance must be stopped before updating' });
+    }
+
+    // Convert "latest" to actual version
+    let targetVersion = version;
+    if (version === 'latest') {
+      const latestRelease = await getLatestRelease();
+      targetVersion = latestRelease.version;
+    }
+
+    // すでに同じバージョンの場合はスキップ
+    if (instance.version === targetVersion) {
+      return res.status(400).json({ error: 'Instance is already on this version' });
+    }
+
+    const assetName = getPlatformAssetName(instance.platform, targetVersion);
+    const binaryPath = path.join(instance.dataDir, 'data', assetName);
+
+    // Get release info
+    const release = await getReleaseByVersion(targetVersion);
+    const asset = release.assets.find((a) => a.name === assetName);
+
+    if (!asset) {
+      return res.status(404).json({ error: `Asset ${assetName} not found in release ${targetVersion}` });
+    }
+
+    // 古いバイナリを削除
+    try {
+      await fs.rm(instance.binaryPath, { force: true });
+      console.log(chalk.green(`✓ Removed old binary: ${instance.binaryPath}`));
+    } catch (error: any) {
+      console.warn(chalk.yellow(`Warning: Could not remove old binary: ${error.message}`));
+    }
+
+    // Download binary
+    await downloadBinary(asset.downloadUrl, binaryPath, (downloaded, total) => {
+      broadcast({
+        type: 'updateProgress',
+        instanceId,
+        downloaded,
+        total,
+        percentage: Math.round((downloaded / total) * 100),
+      });
+    });
+
+    // Verify SHA256
+    const expectedSha256 = getKnownSha256(assetName);
+    if (expectedSha256) {
+      const isValid = await verifySha256(binaryPath, expectedSha256);
+      if (!isValid) {
+        return res.status(500).json({ error: 'SHA256 verification failed' });
+      }
+    }
+
+    // Set executable permissions
+    await setExecutablePermissions(binaryPath);
+
+    // Update instance metadata
+    instance.version = targetVersion;
+    instance.binaryPath = binaryPath;
+    instance.downloadSource = {
+      url: asset.downloadUrl,
+      sha256: expectedSha256 || '',
+    };
+
+    await serviceManager.update(instanceId, instance);
+
+    broadcast({
+      type: 'instanceUpdated',
+      instanceId,
+      version: targetVersion,
+    });
+
+    broadcast({
+      type: 'instances',
+      data: serviceManager.getAll(),
+    });
+
+    res.json({ success: true, version: targetVersion });
+  } catch (error: any) {
+    console.error(chalk.red(`Error updating instance: ${error.message}`));
+    
+    if (error.message && error.message.includes('rate limit')) {
+      broadcast({
+        type: 'rateLimitError',
+        message: 'GitHub APIのレート制限に達しました。アップデートができません。しばらく待ってから再度試してください。',
+      });
+      return res.status(429).json({ 
+        error: 'GitHub APIレート制限に達しました。アップデートができません。',
+        rateLimited: true,
+      });
+    }
+    
     res.status(500).json({ error: error.message });
   }
 });

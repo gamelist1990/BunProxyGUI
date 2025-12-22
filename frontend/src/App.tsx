@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import { useWebSocket } from './useWebSocket';
-import type { BunProxyInstance, LogEntry, BunProxyConfig, AuthStatus } from './api';
+import type { BunProxyInstance, LogEntry, BunProxyConfig, AuthStatus, PlayerIPEntry } from './api';
 import {
   fetchInstances,
   createInstance,
@@ -19,10 +19,14 @@ import {
   login,
   logout,
   setupAuth,
+  fetchPlayerIPs,
+  updateInstance,
 } from './api';
 import { t, setLanguage, getLanguage, type Language } from './lang';
 import { Login } from './components/Login';
 import { ConfigEditor } from './components/ConfigEditor';
+import { PlayerIPList } from './components/PlayerIPList';
+import { UpdateProgress } from './components/UpdateProgress';
 import { formatLogMessage } from './utils/ansi';
 import { DEFAULT_BUNPROXY_VERSION } from './utils/version';
 
@@ -31,8 +35,10 @@ function App() {
   const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [config, setConfig] = useState<BunProxyConfig | null>(null);
+  const [playerIPs, setPlayerIPs] = useState<PlayerIPEntry[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [initializingInstances, setInitializingInstances] = useState<Set<string>>(new Set());
+  const [updatingInstances, setUpdatingInstances] = useState<Map<string, { progress: number; targetVersion: string }>>(new Map());
   const [latestVersion, setLatestVersion] = useState<string>(DEFAULT_BUNPROXY_VERSION);
   const [availableVersions, setAvailableVersions] = useState<string[]>([DEFAULT_BUNPROXY_VERSION]);
   const [language, setLang] = useState<Language>(getLanguage());
@@ -164,6 +170,26 @@ function App() {
         });
         loadInstances();
       }),
+      on('updateProgress', (data: any) => {
+        setUpdatingInstances(prev => {
+          const next = new Map(prev);
+          const current = next.get(data.instanceId);
+          next.set(data.instanceId, {
+            progress: data.percentage,
+            targetVersion: current?.targetVersion || 'unknown',
+          });
+          return next;
+        });
+      }),
+      on('instanceUpdated', (data: any) => {
+        setUpdatingInstances(prev => {
+          const next = new Map(prev);
+          next.delete(data.instanceId);
+          return next;
+        });
+        loadInstances();
+        alert(`アップデートが完了しました: v${data.version}`);
+      }),
       on('log', (data: any) => {
         if (data.instanceId === selectedInstance) {
           setLogs((prev) => [
@@ -190,6 +216,7 @@ function App() {
     if (selectedInstance) {
       loadLogs(selectedInstance);
       loadConfig(selectedInstance);
+      loadPlayerIPs(selectedInstance);
     }
   }, [selectedInstance]);
 
@@ -233,6 +260,16 @@ function App() {
       setConfig(data);
     } catch (error) {
       console.error(t('errorLoadConfig'), error);
+    }
+  }
+
+  async function loadPlayerIPs(instanceId: string) {
+    try {
+      const data = await fetchPlayerIPs(instanceId);
+      setPlayerIPs(data);
+    } catch (error) {
+      console.error('Failed to load player IPs', error);
+      setPlayerIPs([]);
     }
   }
 
@@ -332,7 +369,37 @@ function App() {
     }
   }
 
+  async function handleUpdateInstance(instanceId: string, version: string = 'latest') {
+    if (!confirm(`インスタンスをバージョン ${version} にアップデートしますか？`)) return;
+    
+    try {
+      // プログレス開始
+      setUpdatingInstances(prev => {
+        const next = new Map(prev);
+        next.set(instanceId, { progress: 0, targetVersion: version });
+        return next;
+      });
+
+      await updateInstance(instanceId, version);
+      
+      // 成功時は自動的にWebSocketのinstanceUpdatedイベントで処理される
+    } catch (error: any) {
+      setUpdatingInstances(prev => {
+        const next = new Map(prev);
+        next.delete(instanceId);
+        return next;
+      });
+      
+      if (error.message && (error.message.includes('rate limit') || error.message.includes('レート制限'))) {
+        alert(`⚠️ GitHub APIのレート制限に達しました。\n\nアップデートができません。しばらく待ってから再度試してください。`);
+      } else {
+        alert(`アップデートに失敗しました: ${error.message}`);
+      }
+    }
+  }
+
   const selectedInstanceData = instances.find((i) => i.id === selectedInstance);
+  const updateProgress = selectedInstance ? updatingInstances.get(selectedInstance) : undefined;
 
   // Show loading while checking auth
   if (!authChecked) {
@@ -451,13 +518,31 @@ function App() {
                       <button onClick={() => handleRestartInstance(selectedInstanceData.id)}>{t('restart')}</button>
                     </>
                   ) : (
-                    <button onClick={() => handleStartInstance(selectedInstanceData.id)}>{t('start')}</button>
+                    <>
+                      <button onClick={() => handleStartInstance(selectedInstanceData.id)}>{t('start')}</button>
+                      <button 
+                        onClick={() => handleUpdateInstance(selectedInstanceData.id, 'latest')}
+                        className="update-btn"
+                        disabled={updatingInstances.has(selectedInstanceData.id)}
+                      >
+                        アップデート
+                      </button>
+                    </>
                   )}
                   <button onClick={() => handleDeleteInstance(selectedInstanceData.id)} className="danger">
                     {t('delete')}
                   </button>
                 </div>
               </div>
+
+              {updateProgress && (
+                <UpdateProgress
+                  isUpdating={true}
+                  progress={updateProgress.progress}
+                  currentVersion={selectedInstanceData.version}
+                  targetVersion={updateProgress.targetVersion}
+                />
+              )}
 
               <div className="tabs">
                 <div className="tab-content">
@@ -487,6 +572,19 @@ function App() {
                       />
                     )}
                   </section>
+
+                  {config?.savePlayerIP && (
+                    <section className="player-ips">
+                      <h3>プレイヤーIP記録</h3>
+                      <PlayerIPList playerIPs={playerIPs} />
+                      <button 
+                        onClick={() => loadPlayerIPs(selectedInstanceData.id)}
+                        style={{ marginTop: '1rem' }}
+                      >
+                        更新
+                      </button>
+                    </section>
+                  )}
                 </div>
               </div>
             </>
