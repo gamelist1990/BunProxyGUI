@@ -116,12 +116,43 @@ function App() {
   // WebSocket listeners
   useEffect(() => {
     const unsubscribes = [
-      on('instances', (data: any) => setInstances(data.data)),
+      on('instances', (data: any) => {
+        setInstances(data.data || data);
+      }),
       on('instanceAdded', () => loadInstances()),
       on('instanceRemoved', () => loadInstances()),
-      on('instanceStarted', () => loadInstances()),
-      on('instanceStopped', () => loadInstances()),
-      on('instanceRestarted', () => loadInstances()),
+      on('instanceStarted', (data: any) => {
+        // Update instances list to reflect the new PID and status
+        setInstances(prev => prev.map(inst => 
+          inst.id === data.instanceId 
+            ? { ...inst, pid: data.pid, lastStarted: new Date().toISOString() }
+            : inst
+        ));
+      }),
+      on('instanceStopped', (data: any) => {
+        // Update instances list to clear PID
+        setInstances(prev => prev.map(inst => 
+          inst.id === data.instanceId 
+            ? { ...inst, pid: undefined, lastStarted: undefined }
+            : inst
+        ));
+      }),
+      on('instanceRestarted', (data: any) => {
+        // Update instances list with new PID
+        setInstances(prev => prev.map(inst => 
+          inst.id === data.instanceId 
+            ? { ...inst, pid: data.pid, lastStarted: new Date().toISOString() }
+            : inst
+        ));
+      }),
+      on('processExit', (data: any) => {
+        // Update instances list to clear PID when process exits
+        setInstances(prev => prev.map(inst => 
+          inst.id === data.instanceId 
+            ? { ...inst, pid: undefined }
+            : inst
+        ));
+      }),
       on('instanceInitializing', (data: any) => {
         setInitializingInstances(prev => new Set(prev).add(data.instanceId));
       }),

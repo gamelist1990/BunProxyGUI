@@ -154,6 +154,11 @@ processManager.on('exit', async (instanceId: string, code: number, signal: strin
     code,
     signal,
   });
+  // Broadcast updated instances list
+  broadcast({
+    type: 'instances',
+    data: serviceManager.getAll(),
+  });
 });
 
 processManager.on('error', (instanceId: string, error: Error) => {
@@ -502,6 +507,12 @@ app.post('/api/instances/:id/start', async (req, res) => {
       pid,
     });
 
+    // Broadcast updated instances list
+    broadcast({
+      type: 'instances',
+      data: serviceManager.getAll(),
+    });
+
     res.json({ success: true, pid });
   } catch (error: any) {
     console.error('Start instance error:', error);
@@ -520,12 +531,21 @@ app.post('/api/instances/:id/stop', async (req, res) => {
 
     processManager.stop(instanceId);
 
+    // Clear PID immediately
+    await serviceManager.setPid(instanceId, undefined);
+
     // Unwatch config
     configManager.unwatch(instanceId);
 
     broadcast({
       type: 'instanceStopped',
       instanceId,
+    });
+
+    // Broadcast updated instances list
+    broadcast({
+      type: 'instances',
+      data: serviceManager.getAll(),
     });
 
     res.json({ success: true });
@@ -555,6 +575,12 @@ app.post('/api/instances/:id/restart', async (req, res) => {
       type: 'instanceRestarted',
       instanceId,
       pid,
+    });
+
+    // Broadcast updated instances list
+    broadcast({
+      type: 'instances',
+      data: serviceManager.getAll(),
     });
 
     res.json({ success: true, pid });
@@ -686,6 +712,22 @@ async function init() {
     // Load services
     await serviceManager.load();
     console.log(chalk.green(`✓ Loaded ${serviceManager.getAll().length} instances`));
+
+    // Verify PIDs and clear stale ones
+    const instances = serviceManager.getAll();
+    for (const instance of instances) {
+      if (instance.pid) {
+        try {
+          // Check if process is still running by sending signal 0 (no-op)
+          process.kill(instance.pid, 0);
+          console.log(chalk.gray(`  Instance ${instance.name} (PID: ${instance.pid}) is still running`));
+        } catch (error) {
+          // Process is not running, clear the PID
+          console.log(chalk.yellow(`  Clearing stale PID for ${instance.name} (PID: ${instance.pid})`));
+          await serviceManager.setPid(instance.id, undefined);
+        }
+      }
+    }
 
     // Start server
     server.listen(PORT, () => {
