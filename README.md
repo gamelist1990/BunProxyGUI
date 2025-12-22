@@ -1,30 +1,23 @@
 # BunProxyGUI
 
-BunProxy の GUI 管理ツール - ブラウザから複数の BunProxy インスタンスを管理できます。
+複数のBunProxyインスタンスをブラウザから簡単に管理できるWebベースのGUIツールです。
 
-![BunProxyGUI](https://img.shields.io/badge/version-1.0.0-blue)
+## ✨ 主な機能
 
-## 🚀 機能
+- **複数インスタンス管理** - 複数のBunProxyを同時に管理・運用
+- **自動ダウンロード** - GitHubから最新バイナリを自動取得
+- **リアルタイムログ** - WebSocketでコンソール出力を即座に表示
+- **設定エディタ** - config.ymlをGUIで編集可能
+- **認証機能** - パスワード保護でセキュアに管理
+- **多言語対応** - 日本語・英語に対応
+- **ダーク/ライトモード** - テーマ切り替え対応
 
-- 📦 **複数インスタンス管理**: 複数の BunProxy インスタンスを同時に管理
-- 🔄 **自動ダウンロード**: GitHub Releases から最新のバイナリを自動取得
-- ✅ **SHA256 検証**: ダウンロードしたバイナリの整合性を自動検証
-- 🎮 **プロセス管理**: インスタンスの起動、停止、再起動を簡単に操作
-- 📝 **リアルタイムログ**: WebSocket 経由でコンソールログをリアルタイム表示
-- ⚙️ **ビジュアル設定編集**: config.yml を GUI から編集可能
-- 🔔 **更新通知**: 新しいバージョンのチェック（更新はユーザー判断）
-- 🌐 **Web UI**: React + Vite で構築されたモダンな UI
-- 🌍 **多言語サポート**: 日本語・英語対応（ヘッダーで切り替え可能）
-- 🚀 **Bun 対応**: Bun で高速実行・ビルド・スタンドアロンコンパイル
+## 必要な環境
 
-## 📋 必要要件
+- Bun 1.0以降（推奨）または Node.js 18以降
+- 対応OS: Linux / macOS / Windows
 
-- **Bun 1.0+** (推奨) または Node.js 18+
-- npm または yarn
-
-## 🛠️ インストール
-
-### Bun を使用（推奨）
+## インストール
 
 ```bash
 # リポジトリをクローン
@@ -33,230 +26,132 @@ cd BunProxyGUI
 
 # 依存関係をインストール
 bun install
+cd frontend && bun install && cd ..
 
 # フロントエンドをビルド
-cd frontend
-bun install
-bun run build
-cd ..
-
-# バックエンドをビルド
-bun run build
+bun run build:frontend
 ```
 
-### npm を使用
+## 起動方法
+
+### 開発モード
 
 ```bash
-# リポジトリをクローン
-git clone https://github.com/gamelist1990/BunProxyGUI.git
-cd BunProxyGUI
-
-# 依存関係をインストール
-npm install
-
-# フロントエンドをビルド
-cd frontend
-npm install
-npm run build
-cd ..
-
-# バックエンドをビルド
-npm run build
+bun run alldev
 ```
 
-## 🎯 使い方
+`http://localhost:3000` にアクセスしてください。
 
-### サーバーを起動
-
-#### Bun を使用（推奨）
+### 本番モード
 
 ```bash
-# 開発モード（ホットリロード）
-bun run dev
-
-# 本番モード
+bun run build
 bun run start
 ```
 
-#### npm を使用
+### スタンドアロン実行ファイルの作成
 
 ```bash
-# 開発モード
-npm run dev
-
-# 本番モード
-npm start
-```
-
-ブラウザで `http://localhost:3000` にアクセスします。
-
-### スタンドアロンバイナリ作成（Bun）
-
-Bun を使用すると、Node.js 不要の単一実行ファイルを作成できます：
-
-```bash
-# 現在のプラットフォーム向け
+# 現在のプラットフォーム用
 bun run build:compile
 
-# Linux 向け
-bun run build:compile:linux
-
-# macOS (ARM64) 向け
-bun run build:compile:darwin
-
-# Windows 向け
-bun run build:compile:windows
-
-# すべてのプラットフォーム向け
+# すべてのプラットフォーム用
 bun run build:all
 ```
 
-生成されたバイナリを実行：
+生成されたバイナリを実行するだけで、Node.js/Bunのインストール不要で動作します。
 
-```bash
-# Linux/macOS
-./bunproxy-gui-linux
-./bunproxy-gui-darwin
+## 使い方
 
-# Windows
-bunproxy-gui-windows.exe
-```
+### 初回セットアップ
 
-### 言語切り替え
+1. ブラウザで `http://localhost:3000` を開く
+2. 初回アクセス時に認証設定を促されます（任意のユーザー名とパスワードを設定）
 
-ヘッダー右上のドロップダウンから言語を選択できます：
-- 🇯🇵 日本語
-- 🇺🇸 English
+### インスタンスの作成
 
-言語設定はブラウザの localStorage に保存されます。
+1. サイドバーの「新規インスタンス作成」セクションに入力
+   - インスタンス名を入力
+   - プラットフォームを選択（Linux/macOS/Windows）
+   - バージョンを選択（latest または特定バージョン）
+2. 「インスタンス作成」をクリック
+3. 自動的にバイナリがダウンロードされ、初期化されます
 
-### インスタンスを作成
+### インスタンスの操作
 
-1. サイドバーの "Create New Instance" セクションに以下を入力:
-   - **Instance name**: わかりやすい名前
-   - **Platform**: linux / macOS (ARM64) / Windows
-   - **Version**: 例: `0.0.5`
+- **起動** - 停止中のインスタンスを起動
+- **停止** - 実行中のインスタンスを停止
+- **再起動** - インスタンスを再起動
+- **削除** - インスタンスを完全に削除
 
-2. "Create Instance" をクリック
+### ログの確認
 
-3. GUI が自動的に:
-   - GitHub Releases からバイナリをダウンロード
-   - SHA256 チェックサムを検証
-   - 実行権限を設定（Linux/macOS）
-   - `instances/<id>/data/` にバイナリを保存
+インスタンスを選択すると、リアルタイムでログが表示されます。標準出力・標準エラー・システムメッセージを色分けして表示します。
 
-### インスタンスを管理
-
-- **起動**: "Start" ボタン
-- **停止**: "Stop" ボタン
-- **再起動**: "Restart" ボタン
-- **削除**: "Delete" ボタン（確認あり）
-
-### ログを表示
-
-インスタンスを選択すると、リアルタイムでコンソールログが表示されます：
-- 🟢 stdout（標準出力）
-- 🔴 stderr（エラー出力）
-- 🔵 system（システムメッセージ）
-
-### 設定を編集
+### 設定の編集
 
 1. インスタンスを選択
-2. "Configuration" セクションで JSON を編集
-3. "Save Config" をクリック
-4. インスタンスを再起動して変更を適用
+2. 「設定」セクションでconfig.ymlの内容を編集
+3. 「設定を保存」をクリック
+4. インスタンスを再起動して反映
 
-### 更新をチェック
-
-ヘッダーの "Check Updates" ボタンをクリックすると、最新バージョンを確認できます。更新が必要な場合は通知されますが、更新は手動で行います。
-
-## 📁 ディレクトリ構造
+## ディレクトリ構成
 
 ```
 BunProxyGUI/
-├── src/                    # バックエンドソース
+├── src/                    # バックエンド（Bun/Node.js）
 │   ├── index.ts           # メインサーバー
-│   ├── services.ts        # サービス管理
 │   ├── processManager.ts  # プロセス管理
 │   ├── configManager.ts   # 設定管理
-│   └── downloader.ts      # ダウンロード機能
-├── frontend/              # React フロントエンド
+│   ├── downloader.ts      # ダウンロード処理
+│   └── services.ts        # データ管理
+│
+├── frontend/              # フロントエンド（React + Vite）
 │   └── src/
 │       ├── App.tsx       # メインコンポーネント
-│       ├── api.ts        # API クライアント
-│       └── useWebSocket.ts
-├── public/               # ビルドされたフロントエンド
+│       ├── components/   # UIコンポーネント
+│       ├── lang/         # 多言語対応
+│       └── utils/        # ユーティリティ
+│
 ├── instances/            # インスタンスデータ
-│   └── <instance-id>/
-│       ├── data/        # バイナリ保存先
-│       └── config.yml   # 生成された設定
-├── services.json         # インスタンスメタデータ
-└── package.json
+│   └── [instance-id]/
+│       ├── data/        # バイナリ
+│       └── config.yml   # 設定ファイル
+│
+├── public/              # ビルド済みフロントエンド
+└── services.json        # インスタンスメタデータ
 ```
 
-## 🔧 API エンドポイント
+## トラブルシューティング
 
-### インスタンス管理
-
-- `GET /api/instances` - 全インスタンス取得
-- `GET /api/instances/:id` - 特定インスタンス取得
-- `POST /api/instances` - 新規インスタンス作成
-- `DELETE /api/instances/:id` - インスタンス削除
-
-### プロセス制御
-
-- `POST /api/instances/:id/start` - インスタンス起動
-- `POST /api/instances/:id/stop` - インスタンス停止
-- `POST /api/instances/:id/restart` - インスタンス再起動
-
-### ログと設定
-
-- `GET /api/instances/:id/logs` - ログ取得
-- `GET /api/instances/:id/config` - 設定取得
-- `PUT /api/instances/:id/config` - 設定更新
-
-### 更新確認
-
-- `GET /api/updates/check` - 全インスタンスの更新確認
-- `GET /api/releases/latest` - 最新リリース情報取得
-
-## 🔐 セキュリティ
-
-- **SHA256 検証**: すべてのダウンロードで自動検証
-- **URL 検証**: 公式 GitHub Releases のみ許可
-- **実行権限**: Linux/macOS で自動設定
-- **プロセス分離**: 各インスタンスは独立したプロセス
-
-## 🐛 トラブルシューティング
-
-### ポート競合
-
-デフォルトポート（3000）が使用中の場合:
+### ポートが使用中
 
 ```bash
-PORT=4000 npm start
+PORT=4000 bun run start
 ```
 
-### WebSocket 接続エラー
+環境変数でポートを変更できます。
 
-ファイアウォールで WebSocket（ポート 3000）を許可してください。
+### GitHub APIレート制限
 
-### ダウンロード失敗
+無料アカウントでは1時間あたり60リクエストの制限があります。レート制限に達した場合、デフォルトバージョン(BunProxy)が使用されます。
 
-- インターネット接続を確認
-- GitHub API のレート制限（60 req/hour）を確認
-- プロキシ設定を確認
+### WebSocket接続エラー
 
-## 📝 ライセンス
+ファイアウォールでポート3000を許可してください。
 
-MIT
+## 開発に参加する
 
-## 👥 コントリビューション
+プルリクエストを歓迎します！バグ報告や機能提案もIssueでお待ちしています。
 
-プルリクエストを歓迎します！
+## ライセンス
 
-## 🔗 関連リンク
+MIT License
 
-- [BunProxy Repository](https://github.com/gamelist1990/BunProxy)
-- [BunProxy Releases](https://github.com/gamelist1990/BunProxy/releases)
+---
+
+**関連リンク**
+- [BunProxy本体](https://github.com/gamelist1990/BunProxy)
+- [BunProxyリリース](https://github.com/gamelist1990/BunProxy/releases)
+
 

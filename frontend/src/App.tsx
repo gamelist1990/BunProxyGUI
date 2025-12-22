@@ -24,6 +24,7 @@ import { t, setLanguage, getLanguage, type Language } from './lang';
 import { Login } from './components/Login';
 import { ConfigEditor } from './components/ConfigEditor';
 import { formatLogMessage } from './utils/ansi';
+import { DEFAULT_BUNPROXY_VERSION } from './utils/version';
 
 function App() {
   const [instances, setInstances] = useState<BunProxyInstance[]>([]);
@@ -32,8 +33,8 @@ function App() {
   const [config, setConfig] = useState<BunProxyConfig | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [initializingInstances, setInitializingInstances] = useState<Set<string>>(new Set());
-  const [latestVersion, setLatestVersion] = useState<string>('');
-  const [availableVersions, setAvailableVersions] = useState<string[]>([]);
+  const [latestVersion, setLatestVersion] = useState<string>(DEFAULT_BUNPROXY_VERSION);
+  const [availableVersions, setAvailableVersions] = useState<string[]>([DEFAULT_BUNPROXY_VERSION]);
   const [language, setLang] = useState<Language>(getLanguage());
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -47,7 +48,7 @@ function App() {
   const [newInstanceForm, setNewInstanceForm] = useState({
     name: '',
     platform: 'linux' as 'linux' | 'darwin-arm64' | 'windows',
-    version: '0.0.5',
+    version: DEFAULT_BUNPROXY_VERSION,
   });
 
   const { isConnected, on } = useWebSocket('ws://localhost:3000');
@@ -79,7 +80,6 @@ function App() {
       
       if (status.isAuthenticated) {
         loadInstances();
-        loadReleases();
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -110,7 +110,6 @@ function App() {
   useEffect(() => {
     if (authStatus?.isAuthenticated) {
       loadInstances();
-      loadReleases();
     }
   }, [authStatus]);
 
@@ -183,8 +182,8 @@ function App() {
     } catch (error) {
       console.error(t('errorLoadRelease'), error);
       // エラーが発生した場合はデフォルトバージョンを使用
-      setLatestVersion('0.0.5');
-      setAvailableVersions(['0.0.5']);
+      setLatestVersion(DEFAULT_BUNPROXY_VERSION);
+      setAvailableVersions([DEFAULT_BUNPROXY_VERSION]);
     }
   }
 
@@ -209,8 +208,18 @@ function App() {
   async function handleCreateInstance() {
     try {
       setIsCreating(true);
+      
+      // バージョンが設定されていない、またはリリース情報がない場合のみフェッチ
+      if (availableVersions.length === 1 && availableVersions[0] === DEFAULT_BUNPROXY_VERSION) {
+        try {
+          await loadReleases();
+        } catch (error) {
+          console.warn('Failed to load releases, using default version');
+        }
+      }
+      
       await createInstance(newInstanceForm);
-      setNewInstanceForm({ name: '', platform: 'linux', version: '0.0.5' });
+      setNewInstanceForm({ name: '', platform: 'linux', version: DEFAULT_BUNPROXY_VERSION });
       await loadInstances();
     } catch (error: any) {
       if (error.message && error.message.includes('レート制限')) {
@@ -273,6 +282,9 @@ function App() {
 
   async function handleCheckUpdates() {
     try {
+      // リリース情報を取得
+      await loadReleases();
+      
       const data = await checkUpdates();
       const hasUpdates = data.updates.some((u: any) => u.hasUpdate);
       if (hasUpdates) {
@@ -332,7 +344,7 @@ function App() {
             <option value="en_US">English</option>
           </select>
           <button onClick={toggleTheme} title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>
-            {theme === 'light' ? '🌙' : '☀️'}
+            {theme === 'light' ? 'Night' : 'Light'}
           </button>
           <button onClick={handleCheckUpdates}>{t('checkUpdates')}</button>
           {latestVersion && <span>{t('latest')}: v{latestVersion}</span>}
