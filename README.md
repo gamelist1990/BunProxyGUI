@@ -2,7 +2,7 @@
 
 複数のBunProxyインスタンスをブラウザから簡単に管理できるWebベースのGUIツールです。
 
-## ✨ 主な機能
+## 主な機能
 
 - **複数インスタンス管理** - 複数のBunProxyを同時に管理・運用
 - **自動ダウンロード** - GitHubから最新バイナリを自動取得
@@ -105,32 +105,6 @@ bun run build:all
 3. 「設定を保存」をクリック
 4. インスタンスを再起動して反映
 
-## ディレクトリ構成
-
-```
-BunProxyGUI/
-├── src/                    # バックエンド（Bun/Node.js）
-│   ├── index.ts           # メインサーバー
-│   ├── processManager.ts  # プロセス管理
-│   ├── configManager.ts   # 設定管理
-│   ├── downloader.ts      # ダウンロード処理
-│   └── services.ts        # データ管理
-│
-├── frontend/              # フロントエンド（React + Vite）
-│   └── src/
-│       ├── App.tsx       # メインコンポーネント
-│       ├── components/   # UIコンポーネント
-│       ├── lang/         # 多言語対応
-│       └── utils/        # ユーティリティ
-│
-├── instances/            # インスタンスデータ
-│   └── [instance-id]/
-│       ├── data/        # バイナリ
-│       └── config.yml   # 設定ファイル
-│
-├── public/              # ビルド済みフロントエンド
-└── services.json        # インスタンスメタデータ
-```
 
 ## トラブルシューティング
 
