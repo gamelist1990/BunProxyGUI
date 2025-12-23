@@ -80,7 +80,8 @@ function App() {
   // Check auth status on mount
   useEffect(() => {
     checkAuth();
-  }); // checkAuth is defined below, so no dependency needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   // Fetch host system info (platform) and set as default for new instance platform
   useEffect(() => {
