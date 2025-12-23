@@ -1,4 +1,4 @@
-import './UpdateProgress.css';
+import "./UpdateProgress.css";
 
 interface UpdateProgressProps {
   isUpdating: boolean;
@@ -7,7 +7,12 @@ interface UpdateProgressProps {
   targetVersion: string;
 }
 
-export function UpdateProgress({ isUpdating, progress, currentVersion, targetVersion }: UpdateProgressProps) {
+export function UpdateProgress({
+  isUpdating,
+  progress,
+  currentVersion,
+  targetVersion,
+}: UpdateProgressProps) {
   if (!isUpdating) return null;
 
   return (
@@ -22,9 +27,13 @@ export function UpdateProgress({ isUpdating, progress, currentVersion, targetVer
         </div>
         <div className="progress-container">
           <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ transform: `scaleX(${Math.max(0, Math.min(100, progress)) / 100})` }}
+            <div
+              className="progress-fill"
+              style={{
+                transform: `scaleX(${
+                  Math.max(0, Math.min(100, progress)) / 100
+                })`,
+              }}
               aria-valuenow={progress}
               aria-valuemin={0}
               aria-valuemax={100}

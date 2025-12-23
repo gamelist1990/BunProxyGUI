@@ -37,7 +37,6 @@ export function useWebSocket(url: string) {
         const message = JSON.parse(event.data) as WebSocketMessage;
         setLastMessage(message);
 
-        // Notify type-specific listeners
         const typeListeners = listeners.current.get(message.type);
         if (typeListeners) {
           typeListeners.forEach((callback) => callback(message));

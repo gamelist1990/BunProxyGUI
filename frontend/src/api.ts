@@ -11,7 +11,7 @@ export interface BunProxyInstance {
   autoRestart: boolean;
   downloadSource: {
     url: string;
-    };
+  };
 }
 
 export interface LogEntry {
@@ -61,7 +61,7 @@ export interface Release {
   }>;
 }
 
-// API functions
+
 const API_BASE = '/api';
 
 export async function fetchInstances(): Promise<BunProxyInstance[]> {
@@ -203,7 +203,7 @@ export async function fetchSystemInfo(): Promise<{ platform: 'linux' | 'darwin-a
   return res.json();
 }
 
-// Auth API
+
 export interface AuthStatus {
   hasAuth: boolean;
   isAuthenticated: boolean;
@@ -261,7 +261,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
   }
 }
 
-// WebSocket event types
+
 export interface WebSocketEventMap {
   instances: BunProxyInstance[] | { data: BunProxyInstance[] };
   instanceAdded: void;

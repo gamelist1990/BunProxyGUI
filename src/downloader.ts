@@ -1,15 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { createWriteStream, createReadStream } from 'fs';
-import { pipeline } from 'stream/promises';
-import { createHash } from 'crypto';
+import { createWriteStream } from 'fs';
 import chalk from 'chalk';
 
 const GITHUB_REPO = 'gamelist1990/BunProxy';
 const RELEASE_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
 const DEFAULT_VERSION = '0.0.6';
 
-// キャッシュ設定
 const CACHE_DURATION = 60 * 60 * 1000; // 1時間
 
 interface CacheEntry<T> {
@@ -83,7 +80,6 @@ export interface Release {
 }
 
 export async function getLatestRelease(): Promise<Release> {
-  // キャッシュを確認
   const cached = releaseCache.get<Release>('latest');
   if (cached) {
     console.log(chalk.blue('Using cached latest release'));
@@ -92,7 +88,7 @@ export async function getLatestRelease(): Promise<Release> {
 
   console.log(chalk.blue('Fetching latest release from GitHub...'));
   const response = await fetch(`${RELEASE_API_BASE}/latest`);
-  
+
   if (!response.ok) {
     if (response.status === 403) {
       console.log(chalk.yellow('GitHub API rate limit exceeded, using default version'));
@@ -122,13 +118,11 @@ export async function getLatestRelease(): Promise<Release> {
     })),
   };
 
-  // キャッシュに保存
   releaseCache.set('latest', release);
   return release;
 }
 
 export async function getAllReleases(): Promise<Release[]> {
-  // キャッシュを確認
   const cached = releaseCache.get<Release[]>('all');
   if (cached) {
     console.log(chalk.blue('Using cached releases list'));
@@ -137,7 +131,7 @@ export async function getAllReleases(): Promise<Release[]> {
 
   console.log(chalk.blue('Fetching all releases from GitHub...'));
   const response = await fetch(`${RELEASE_API_BASE}?per_page=20`);
-  
+
   if (!response.ok) {
     if (response.status === 403) {
       console.log(chalk.yellow('GitHub API rate limit exceeded, using default version'));
@@ -167,7 +161,6 @@ export async function getAllReleases(): Promise<Release[]> {
     })),
   }));
 
-  // キャッシュに保存
   releaseCache.set('all', releases);
   return releases;
 }
@@ -176,7 +169,7 @@ export async function getReleaseByVersion(version: string): Promise<Release> {
   console.log(chalk.blue(`Fetching release ${version} from GitHub...`));
   const tag = version.startsWith('release-') ? version : `release-${version}`;
   const response = await fetch(`${RELEASE_API_BASE}/tags/${tag}`);
-  
+
   if (!response.ok) {
     if (response.status === 403) {
       releaseCache.setRateLimited();
@@ -186,7 +179,7 @@ export async function getReleaseByVersion(version: string): Promise<Release> {
   }
 
   const data: any = await response.json();
-  
+
   return {
     version: data.tag_name.replace('release-', ''),
     tag: data.tag_name,
@@ -206,18 +199,16 @@ export async function downloadBinary(
   onProgress?: (downloaded: number, total: number) => void
 ): Promise<void> {
   console.log(chalk.blue(`Downloading from ${downloadUrl}...`));
-  
-  // Ensure directory exists
   await fs.mkdir(path.dirname(destinationPath), { recursive: true });
 
   const response = await fetch(downloadUrl);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to download: ${response.statusText}`);
   }
 
   const totalSize = parseInt(response.headers.get('content-length') || '0', 10);
-  
+
   if (!response.body) {
     throw new Error('Response body is null');
   }
@@ -230,15 +221,15 @@ export async function downloadBinary(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
+
       downloadedSize += value.length;
       if (onProgress) {
         onProgress(downloadedSize, totalSize);
       }
-      
+
       fileStream.write(value);
     }
-    
+
     fileStream.end();
     await new Promise<void>((resolve, reject) => {
       fileStream.on('finish', () => resolve());
@@ -283,22 +274,19 @@ export async function downloadAndVerifyBinary(
   onProgress?: (downloaded: number, total: number) => void
 ): Promise<void> {
   console.log(chalk.blue(`Downloading BunProxy ${version} for ${platform}...`));
-  
-  // リリース情報を取得
+
   const release = await getLatestRelease();
   const assetName = getPlatformAssetName(platform, version);
   const asset = release.assets.find(a => a.name === assetName);
-  
+
   if (!asset) {
     throw new Error(`Asset ${assetName} not found in release ${release.version}`);
   }
-  
-  // バイナリをダウンロード
+
   await downloadBinary(asset.downloadUrl, destinationPath, onProgress);
-  
-  
-  // 実行権限を設定
+
+
   await setExecutablePermissions(destinationPath);
-  
+
   console.log(chalk.green(`✓ Successfully downloaded and verified ${assetName}`));
 }

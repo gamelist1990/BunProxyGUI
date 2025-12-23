@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
-import './App.css';
-import { useWebSocket } from './useWebSocket';
-import type { BunProxyInstance, LogEntry, BunProxyConfig, AuthStatus, PlayerIPEntry } from './api';
+import { useState, useEffect } from "react";
+import "./App.css";
+import { useWebSocket } from "./useWebSocket";
+import type {
+  BunProxyInstance,
+  LogEntry,
+  BunProxyConfig,
+  AuthStatus,
+  PlayerIPEntry,
+} from "./api";
 import {
   fetchInstances,
   createInstance,
@@ -23,16 +29,16 @@ import {
   updateInstance,
   updateInstanceMetadata,
   fetchSystemInfo,
-} from './api';
-import { t, setLanguage, getLanguage, type Language } from './lang';
-import { Login } from './components/Login';
-import { ConfigEditor } from './components/ConfigEditor';
-import { PlayerIPList } from './components/PlayerIPList';
-import { UpdateProgress } from './components/UpdateProgress';
-import { InstanceSettingsModal } from './components/InstanceSettingsModal';
-import { formatLogMessage } from './utils/ansi';
-import { DEFAULT_BUNPROXY_VERSION } from './utils/version';
-import type { WebSocketEventMap, UpdateCheckResult } from './api';
+} from "./api";
+import { t, setLanguage, getLanguage, type Language } from "./lang";
+import { Login } from "./components/Login";
+import { ConfigEditor } from "./components/ConfigEditor";
+import { PlayerIPList } from "./components/PlayerIPList";
+import { UpdateProgress } from "./components/UpdateProgress";
+import { InstanceSettingsModal } from "./components/InstanceSettingsModal";
+import { formatLogMessage } from "./utils/ansi";
+import { DEFAULT_BUNPROXY_VERSION } from "./utils/version";
+import type { WebSocketEventMap, UpdateCheckResult } from "./api";
 
 function App() {
   const [instances, setInstances] = useState<BunProxyInstance[]>([]);
@@ -41,27 +47,37 @@ function App() {
   const [config, setConfig] = useState<BunProxyConfig | null>(null);
   const [playerIPs, setPlayerIPs] = useState<PlayerIPEntry[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [initializingInstances, setInitializingInstances] = useState<Set<string>>(new Set());
-  const [updatingInstances, setUpdatingInstances] = useState<Map<string, { progress: number; targetVersion: string }>>(new Map());
-  const [latestVersion, setLatestVersion] = useState<string>(DEFAULT_BUNPROXY_VERSION);
-  const [availableVersions, setAvailableVersions] = useState<string[]>([DEFAULT_BUNPROXY_VERSION]);
+  const [initializingInstances, setInitializingInstances] = useState<
+    Set<string>
+  >(new Set());
+  const [updatingInstances, setUpdatingInstances] = useState<
+    Map<string, { progress: number; targetVersion: string }>
+  >(new Map());
+  const [latestVersion, setLatestVersion] = useState<string>(
+    DEFAULT_BUNPROXY_VERSION
+  );
+  const [availableVersions, setAvailableVersions] = useState<string[]>([
+    DEFAULT_BUNPROXY_VERSION,
+  ]);
   const [language, setLang] = useState<Language>(getLanguage());
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved as 'light' | 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved as "light" | "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
   });
-  
+
   const [newInstanceForm, setNewInstanceForm] = useState({
-    name: '',
-    platform: 'linux' as 'linux' | 'darwin-arm64' | 'windows',
+    name: "",
+    platform: "linux" as "linux" | "darwin-arm64" | "windows",
     version: DEFAULT_BUNPROXY_VERSION,
   });
 
-  const { isConnected, on } = useWebSocket('ws://localhost:3000');
+  const { isConnected, on } = useWebSocket("ws://localhost:3000");
 
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
@@ -69,23 +85,19 @@ function App() {
   };
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
-  // Check auth status on mount
   useEffect(() => {
     checkAuth();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  });
 
-  // Fetch host system info (platform) and set as default for new instance platform
   useEffect(() => {
-    // Wait until auth check is complete to avoid triggering 401 when auth is required and user is not authenticated
     if (!authChecked) return;
     if (authStatus?.requireAuth && !authStatus?.isAuthenticated) return;
 
@@ -95,9 +107,7 @@ function App() {
           setNewInstanceForm((prev) => ({ ...prev, platform: info.platform }));
         }
       })
-      .catch(() => {
-        // ignore failures, keep default
-      });
+      .catch(() => {});
   }, [authChecked, authStatus]);
 
   const checkAuth = async () => {
@@ -110,7 +120,7 @@ function App() {
         loadInstances();
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error("Auth check failed:", error);
       setAuthChecked(true);
     }
   };
@@ -123,7 +133,7 @@ function App() {
     } else {
       await setupAuth(username, password);
     }
-    
+
     await checkAuth();
   }
 
@@ -134,78 +144,105 @@ function App() {
     setSelectedInstance(null);
   }
 
-  // Load instances on mount
   useEffect(() => {
     if (authStatus?.isAuthenticated) {
       loadInstances();
     }
   }, [authStatus]);
 
-  // WebSocket listeners
   useEffect(() => {
     const unsubscribes = [
-      on('instances', (data: WebSocketEventMap['instances']) => {
+      on("instances", (data: WebSocketEventMap["instances"]) => {
         const instancesData = Array.isArray(data) ? data : data.data || [];
         setInstances(instancesData);
       }),
-      on('instanceAdded', () => loadInstances()),
-      on('instanceRemoved', () => loadInstances()),
-      on('instanceStarted', (data: WebSocketEventMap['instanceStarted']) => {
-        // Update instances list to reflect the new PID and status
-        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
-          inst.id === data.instanceId
-            ? { ...inst, pid: data.pid, lastStarted: new Date().toISOString() }
-            : inst
-        ) : prev);
+      on("instanceAdded", () => loadInstances()),
+      on("instanceRemoved", () => loadInstances()),
+      on("instanceStarted", (data: WebSocketEventMap["instanceStarted"]) => {
+        setInstances((prev) =>
+          Array.isArray(prev)
+            ? prev.map((inst) =>
+                inst.id === data.instanceId
+                  ? {
+                      ...inst,
+                      pid: data.pid,
+                      lastStarted: new Date().toISOString(),
+                    }
+                  : inst
+              )
+            : prev
+        );
       }),
-      on('instanceStopped', (data: WebSocketEventMap['instanceStopped']) => {
-        // Update instances list to clear PID
-        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
-          inst.id === data.instanceId
-            ? { ...inst, pid: undefined, lastStarted: undefined }
-            : inst
-        ) : prev);
+      on("instanceStopped", (data: WebSocketEventMap["instanceStopped"]) => {
+        setInstances((prev) =>
+          Array.isArray(prev)
+            ? prev.map((inst) =>
+                inst.id === data.instanceId
+                  ? { ...inst, pid: undefined, lastStarted: undefined }
+                  : inst
+              )
+            : prev
+        );
       }),
-      on('instanceRestarted', (data: WebSocketEventMap['instanceRestarted']) => {
-        // Update instances list with new PID
-        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
-          inst.id === data.instanceId
-            ? { ...inst, pid: data.pid, lastStarted: new Date().toISOString() }
-            : inst
-        ) : prev);
+      on(
+        "instanceRestarted",
+        (data: WebSocketEventMap["instanceRestarted"]) => {
+          setInstances((prev) =>
+            Array.isArray(prev)
+              ? prev.map((inst) =>
+                  inst.id === data.instanceId
+                    ? {
+                        ...inst,
+                        pid: data.pid,
+                        lastStarted: new Date().toISOString(),
+                      }
+                    : inst
+                )
+              : prev
+          );
+        }
+      ),
+      on("processExit", (data: WebSocketEventMap["processExit"]) => {
+        setInstances((prev) =>
+          Array.isArray(prev)
+            ? prev.map((inst) =>
+                inst.id === data.instanceId ? { ...inst, pid: undefined } : inst
+              )
+            : prev
+        );
       }),
-      on('processExit', (data: WebSocketEventMap['processExit']) => {
-        // Update instances list to clear PID when process exits
-        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
-          inst.id === data.instanceId
-            ? { ...inst, pid: undefined }
-            : inst
-        ) : prev);
-      }),
-      on('instanceInitializing', (data: WebSocketEventMap['instanceInitializing']) => {
-        setInitializingInstances(prev => new Set(prev).add(data.instanceId));
-      }),
-      on('instanceInitialized', (data: WebSocketEventMap['instanceInitialized']) => {
-        setInitializingInstances(prev => {
-          const next = new Set(prev);
-          next.delete(data.instanceId);
-          return next;
-        });
-        loadInstances();
-      }),
-      on('updateProgress', (data: WebSocketEventMap['updateProgress']) => {
-        setUpdatingInstances(prev => {
+      on(
+        "instanceInitializing",
+        (data: WebSocketEventMap["instanceInitializing"]) => {
+          setInitializingInstances((prev) =>
+            new Set(prev).add(data.instanceId)
+          );
+        }
+      ),
+      on(
+        "instanceInitialized",
+        (data: WebSocketEventMap["instanceInitialized"]) => {
+          setInitializingInstances((prev) => {
+            const next = new Set(prev);
+            next.delete(data.instanceId);
+            return next;
+          });
+          loadInstances();
+        }
+      ),
+      on("updateProgress", (data: WebSocketEventMap["updateProgress"]) => {
+        setUpdatingInstances((prev) => {
           const next = new Map(prev);
           const current = next.get(data.instanceId);
           next.set(data.instanceId, {
             progress: data.percentage,
-            targetVersion: current?.targetVersion || 'unknown',
+            targetVersion: current?.targetVersion || "unknown",
           });
           return next;
         });
       }),
-      on('instanceUpdated', (data: WebSocketEventMap['instanceUpdated']) => {
-        setUpdatingInstances(prev => {
+      on("instanceUpdated", (data: WebSocketEventMap["instanceUpdated"]) => {
+        setUpdatingInstances((prev) => {
           const next = new Map(prev);
           next.delete(data.instanceId);
           return next;
@@ -213,20 +250,24 @@ function App() {
         loadInstances();
         alert(`アップデートが完了しました: v${data.version}`);
       }),
-      on('log', (data: WebSocketEventMap['log']) => {
+      on("log", (data: WebSocketEventMap["log"]) => {
         if (data.instanceId === selectedInstance) {
           setLogs((prev) => [
             ...prev,
-            { timestamp: data.timestamp, type: data.logType as 'stdout' | 'stderr' | 'system', message: data.message },
+            {
+              timestamp: data.timestamp,
+              type: data.logType as "stdout" | "stderr" | "system",
+              message: data.message,
+            },
           ]);
         }
       }),
-      on('configUpdated', (data: WebSocketEventMap['configUpdated']) => {
+      on("configUpdated", (data: WebSocketEventMap["configUpdated"]) => {
         if (data.instanceId === selectedInstance) {
           setConfig(data.config);
         }
       }),
-      on('rateLimitError', (data: WebSocketEventMap['rateLimitError']) => {
+      on("rateLimitError", (data: WebSocketEventMap["rateLimitError"]) => {
         alert(`⚠️ ${data.message}`);
       }),
     ];
@@ -234,7 +275,6 @@ function App() {
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [on, selectedInstance]);
 
-  // Load selected instance logs and config
   useEffect(() => {
     if (selectedInstance) {
       loadLogs(selectedInstance);
@@ -248,7 +288,7 @@ function App() {
       const data = await fetchInstances();
       setInstances(data);
     } catch (error) {
-      console.error(t('errorLoadInstances'), error);
+      console.error(t("errorLoadInstances"), error);
     }
   }
 
@@ -259,10 +299,10 @@ function App() {
         fetchAllReleases(),
       ]);
       setLatestVersion(latest.version);
-      setAvailableVersions(allReleases.map(r => r.version));
+      setAvailableVersions(allReleases.map((r) => r.version));
     } catch (error) {
-      console.error(t('errorLoadRelease'), error);
-      // エラーが発生した場合はデフォルトバージョンを使用
+      console.error(t("errorLoadRelease"), error);
+
       setLatestVersion(DEFAULT_BUNPROXY_VERSION);
       setAvailableVersions([DEFAULT_BUNPROXY_VERSION]);
     }
@@ -273,7 +313,7 @@ function App() {
       const data = await fetchLogs(instanceId, 100);
       setLogs(data);
     } catch (error) {
-      console.error(t('errorLoadLogs'), error);
+      console.error(t("errorLoadLogs"), error);
     }
   }
 
@@ -282,7 +322,7 @@ function App() {
       const data = await fetchConfig(instanceId);
       setConfig(data);
     } catch (error) {
-      console.error(t('errorLoadConfig'), error);
+      console.error(t("errorLoadConfig"), error);
     }
   }
 
@@ -291,7 +331,7 @@ function App() {
       const data = await fetchPlayerIPs(instanceId);
       setPlayerIPs(data);
     } catch (error) {
-      console.error('Failed to load player IPs', error);
+      console.error("Failed to load player IPs", error);
       setPlayerIPs([]);
     }
   }
@@ -300,24 +340,32 @@ function App() {
     try {
       setIsCreating(true);
 
-      // バージョンが設定されていない、またはリリース情報がない場合のみフェッチ
-      if (availableVersions.length === 1 && availableVersions[0] === DEFAULT_BUNPROXY_VERSION) {
+      if (
+        availableVersions.length === 1 &&
+        availableVersions[0] === DEFAULT_BUNPROXY_VERSION
+      ) {
         try {
           await loadReleases();
         } catch {
-          console.warn('Failed to load releases, using default version');
+          console.warn("Failed to load releases, using default version");
         }
       }
 
       await createInstance(newInstanceForm);
-      setNewInstanceForm({ name: '', platform: 'linux', version: DEFAULT_BUNPROXY_VERSION });
+      setNewInstanceForm({
+        name: "",
+        platform: "linux",
+        version: DEFAULT_BUNPROXY_VERSION,
+      });
       await loadInstances();
     } catch (error) {
       const err = error as Error;
-      if (err.message && err.message.includes('レート制限')) {
-        alert(`⚠️ ${err.message}\n\n新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。`);
+      if (err.message && err.message.includes("レート制限")) {
+        alert(
+          `⚠️ ${err.message}\n\n新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。`
+        );
       } else {
-        alert(`${t('errorCreateInstance')} ${err.message}`);
+        alert(`${t("errorCreateInstance")} ${err.message}`);
       }
     } finally {
       setIsCreating(false);
@@ -325,7 +373,7 @@ function App() {
   }
 
   async function handleDeleteInstance(id: string) {
-    if (!confirm(t('confirmDelete'))) return;
+    if (!confirm(t("confirmDelete"))) return;
 
     try {
       await deleteInstance(id);
@@ -334,7 +382,7 @@ function App() {
       }
     } catch (error) {
       const err = error as Error;
-      alert(`${t('errorDeleteInstance')} ${err.message}`);
+      alert(`${t("errorDeleteInstance")} ${err.message}`);
     }
   }
 
@@ -343,7 +391,7 @@ function App() {
       await startInstance(id);
     } catch (error) {
       const err = error as Error;
-      alert(`${t('errorStartInstance')} ${err.message}`);
+      alert(`${t("errorStartInstance")} ${err.message}`);
     }
   }
 
@@ -352,7 +400,7 @@ function App() {
       await stopInstance(id);
     } catch (error) {
       const err = error as Error;
-      alert(`${t('errorStopInstance')} ${err.message}`);
+      alert(`${t("errorStopInstance")} ${err.message}`);
     }
   }
 
@@ -361,7 +409,7 @@ function App() {
       await restartInstance(id);
     } catch (error) {
       const err = error as Error;
-      alert(`${t('errorRestartInstance')} ${err.message}`);
+      alert(`${t("errorRestartInstance")} ${err.message}`);
     }
   }
 
@@ -370,73 +418,88 @@ function App() {
 
     try {
       await updateConfig(selectedInstance, config);
-      alert(t('configSaved'));
+      alert(t("configSaved"));
     } catch (error) {
       const err = error as Error;
-      alert(`${t('errorSaveConfig')} ${err.message}`);
+      alert(`${t("errorSaveConfig")} ${err.message}`);
     }
   }
 
   async function handleCheckUpdates() {
     try {
-      // リリース情報を取得
       await loadReleases();
 
       const data: UpdateCheckResult = await checkUpdates();
       const hasUpdates = data.updates.some((u) => u.hasUpdate);
       if (hasUpdates) {
-        alert(`${t('updatesAvailable')} ${data.latestRelease.version}`);
+        alert(`${t("updatesAvailable")} ${data.latestRelease.version}`);
       } else {
-        alert(t('allUpToDate'));
+        alert(t("allUpToDate"));
       }
     } catch (error) {
       const err = error as Error;
-      if (err.message && (err.message.includes('rate limit') || err.message.includes('レート制限'))) {
-        alert(`⚠️ GitHub APIのレート制限に達しました。\n\n更新確認ができません。しばらく待ってから再度試してください。`);
+      if (
+        err.message &&
+        (err.message.includes("rate limit") ||
+          err.message.includes("レート制限"))
+      ) {
+        alert(
+          `⚠️ GitHub APIのレート制限に達しました。\n\n更新確認ができません。しばらく待ってから再度試してください。`
+        );
       } else {
-        alert(`${t('errorCheckUpdates')} ${err.message}`);
+        alert(`${t("errorCheckUpdates")} ${err.message}`);
       }
     }
   }
 
-  async function handleUpdateInstance(instanceId: string, version: string = 'latest') {
-    if (!confirm(`インスタンスをバージョン ${version} にアップデートしますか？`)) return;
+  async function handleUpdateInstance(
+    instanceId: string,
+    version: string = "latest"
+  ) {
+    if (
+      !confirm(`インスタンスをバージョン ${version} にアップデートしますか？`)
+    )
+      return;
 
     try {
-      // プログレス開始
-      setUpdatingInstances(prev => {
+      setUpdatingInstances((prev) => {
         const next = new Map(prev);
         next.set(instanceId, { progress: 0, targetVersion: version });
         return next;
       });
 
       await updateInstance(instanceId, version);
-
-      // 成功時は自動的にWebSocketのinstanceUpdatedイベントで処理される
     } catch (error) {
-      setUpdatingInstances(prev => {
+      setUpdatingInstances((prev) => {
         const next = new Map(prev);
         next.delete(instanceId);
         return next;
       });
 
       const err = error as Error;
-      if (err.message && (err.message.includes('rate limit') || err.message.includes('レート制限'))) {
-        alert(`⚠️ GitHub APIのレート制限に達しました。\n\nアップデートができません。しばらく待ってから再度試してください。`);
+      if (
+        err.message &&
+        (err.message.includes("rate limit") ||
+          err.message.includes("レート制限"))
+      ) {
+        alert(
+          `⚠️ GitHub APIのレート制限に達しました。\n\nアップデートができません。しばらく待ってから再度試してください。`
+        );
       } else {
         alert(`アップデートに失敗しました: ${err.message}`);
       }
     }
   }
 
-  const selectedInstanceData = Array.isArray(instances) ? instances.find((i) => i.id === selectedInstance) : null;
-  const updateProgress = selectedInstance ? updatingInstances.get(selectedInstance) : undefined;
+  const selectedInstanceData = Array.isArray(instances)
+    ? instances.find((i) => i.id === selectedInstance)
+    : null;
+  const updateProgress = selectedInstance
+    ? updatingInstances.get(selectedInstance)
+    : undefined;
 
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
-
-
-  // Show loading while checking auth
   if (!authChecked) {
     return (
       <div className="app loading">
@@ -445,19 +508,20 @@ function App() {
     );
   }
 
-  // Show login if auth is required
-  if (authStatus?.requireAuth || (authStatus?.hasAuth && !authStatus?.isAuthenticated)) {
+  if (
+    authStatus?.requireAuth ||
+    (authStatus?.hasAuth && !authStatus?.isAuthenticated)
+  ) {
     return <Login onLogin={handleLogin} isSetup={!authStatus?.hasAuth} />;
   }
 
-  // Show setup prompt if no auth configured
   if (!authStatus?.hasAuth && authStatus?.isAuthenticated) {
     return (
       <div className="app setup-prompt">
         <div className="setup-card">
-          <h2>🔒 {t('securitySetup')}</h2>
-          <p>{t('noAuthConfigured')}</p>
-          <p>{t('setupAuthPrompt')}</p>
+          <h2>🔒 {t("securitySetup")}</h2>
+          <p>{t("noAuthConfigured")}</p>
+          <p>{t("setupAuthPrompt")}</p>
           <Login onLogin={handleLogin} isSetup={true} />
         </div>
       </div>
@@ -467,80 +531,132 @@ function App() {
   return (
     <div className="app">
       <header>
-        <h1>{t('appTitle')}</h1>
+        <h1>{t("appTitle")}</h1>
         <div className="connection-status">
-          <span className={isConnected ? 'connected' : 'disconnected'}>
-            {isConnected ? t('connected') : t('disconnected')}
+          <span className={isConnected ? "connected" : "disconnected"}>
+            {isConnected ? t("connected") : t("disconnected")}
           </span>
-          <select value={language} onChange={(e) => handleLanguageChange(e.target.value as Language)}>
+          <select
+            value={language}
+            onChange={(e) => handleLanguageChange(e.target.value as Language)}
+          >
             <option value="ja_JP">日本語</option>
             <option value="en_US">English</option>
           </select>
-          <button onClick={toggleTheme} title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>
-            {theme === 'light' ? 'Night' : 'Light'}
+          <button
+            onClick={toggleTheme}
+            title={
+              theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"
+            }
+          >
+            {theme === "light" ? "Night" : "Light"}
           </button>
-          <button onClick={handleCheckUpdates}>{t('checkUpdates')}</button>
-          {latestVersion && <span>{t('latest')}: v{latestVersion}</span>}
+          <button onClick={handleCheckUpdates}>{t("checkUpdates")}</button>
+          {latestVersion && (
+            <span>
+              {t("latest")}: v{latestVersion}
+            </span>
+          )}
           {authStatus?.hasAuth && (
-            <button onClick={handleLogout} className="logout-btn">{t('logout')}</button>
+            <button onClick={handleLogout} className="logout-btn">
+              {t("logout")}
+            </button>
           )}
         </div>
       </header>
 
       <div className="main-container">
         <aside className="sidebar">
-          <h2>{t('instances')}</h2>
+          <h2>{t("instances")}</h2>
           <div className="instance-list">
-            {Array.isArray(instances) && instances.map((instance) => (
-              <div
-                key={instance.id}
-                className={`instance-item ${selectedInstance === instance.id ? 'selected' : ''} ${initializingInstances.has(instance.id) ? 'initializing' : ''}`}
-                onClick={() => setSelectedInstance(instance.id)}
-              >
-                <div className="instance-info">
-                  <strong>{instance.name}</strong>
-                  <span className="instance-status">
-                    {initializingInstances.has(instance.id) ? t('initializing') : instance.pid ? t('running') : t('stopped')}
-                  </span>
-                  {instance.autoRestart && (
-                    <span className="auto-restart-badge" title={t('autoRestart') || '自動起動'} style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--primary-color)' }}>
+            {Array.isArray(instances) &&
+              instances.map((instance) => (
+                <div
+                  key={instance.id}
+                  className={`instance-item ${
+                    selectedInstance === instance.id ? "selected" : ""
+                  } ${
+                    initializingInstances.has(instance.id) ? "initializing" : ""
+                  }`}
+                  onClick={() => setSelectedInstance(instance.id)}
+                >
+                  <div className="instance-info">
+                    <strong>{instance.name}</strong>
+                    <span className="instance-status">
+                      {initializingInstances.has(instance.id)
+                        ? t("initializing")
+                        : instance.pid
+                        ? t("running")
+                        : t("stopped")}
                     </span>
-                  )}
-                  <small>{instance.platform} v{instance.version}</small>
+                    {instance.autoRestart && (
+                      <span
+                        className="auto-restart-badge"
+                        title={t("autoRestart") || "自動起動"}
+                        style={{
+                          marginLeft: "0.5rem",
+                          fontSize: "0.8rem",
+                          color: "var(--primary-color)",
+                        }}
+                      ></span>
+                    )}
+                    <small>
+                      {instance.platform} v{instance.version}
+                    </small>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
 
           <div className="create-instance">
-            <h3>{t('createNewInstance')}</h3>
+            <h3>{t("createNewInstance")}</h3>
             <input
               type="text"
-              placeholder={t('placeholderInstanceName')}
+              placeholder={t("placeholderInstanceName")}
               value={newInstanceForm.name}
-              onChange={(e) => setNewInstanceForm({ ...newInstanceForm, name: e.target.value })}
+              onChange={(e) =>
+                setNewInstanceForm({ ...newInstanceForm, name: e.target.value })
+              }
             />
             <select
               value={newInstanceForm.platform}
-              onChange={(e) => setNewInstanceForm({ ...newInstanceForm, platform: e.target.value as 'linux' | 'darwin-arm64' | 'windows' })}
+              onChange={(e) =>
+                setNewInstanceForm({
+                  ...newInstanceForm,
+                  platform: e.target.value as
+                    | "linux"
+                    | "darwin-arm64"
+                    | "windows",
+                })
+              }
             >
-              <option value="linux">{t('platformLinux')}</option>
-              <option value="darwin-arm64">{t('platformMacOS')}</option>
-              <option value="windows">{t('platformWindows')}</option>
+              <option value="linux">{t("platformLinux")}</option>
+              <option value="darwin-arm64">{t("platformMacOS")}</option>
+              <option value="windows">{t("platformWindows")}</option>
             </select>
             <select
               value={newInstanceForm.version}
-              onChange={(e) => setNewInstanceForm({ ...newInstanceForm, version: e.target.value })}
+              onChange={(e) =>
+                setNewInstanceForm({
+                  ...newInstanceForm,
+                  version: e.target.value,
+                })
+              }
             >
-              <option value="latest">{t('latestVersion') || 'Latest'} ({latestVersion})</option>
+              <option value="latest">
+                {t("latestVersion") || "Latest"} ({latestVersion})
+              </option>
               {availableVersions.map((version) => (
                 <option key={version} value={version}>
                   {version}
                 </option>
               ))}
             </select>
-            <button onClick={handleCreateInstance} disabled={isCreating || !newInstanceForm.name}>
-              {isCreating ? t('creating') : t('createInstance')}
+            <button
+              onClick={handleCreateInstance}
+              disabled={isCreating || !newInstanceForm.name}
+            >
+              {isCreating ? t("creating") : t("createInstance")}
             </button>
           </div>
         </aside>
@@ -553,19 +669,45 @@ function App() {
                 <div className="instance-actions">
                   {selectedInstanceData.pid ? (
                     <>
-                      <button onClick={() => handleStopInstance(selectedInstanceData.id)}>{t('stop')}</button>
-                      <button onClick={() => handleRestartInstance(selectedInstanceData.id)}>{t('restart')}</button>
+                      <button
+                        onClick={() =>
+                          handleStopInstance(selectedInstanceData.id)
+                        }
+                      >
+                        {t("stop")}
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleRestartInstance(selectedInstanceData.id)
+                        }
+                      >
+                        {t("restart")}
+                      </button>
                     </>
                   ) : (
-                    <button onClick={() => handleStartInstance(selectedInstanceData.id)}>{t('start')}</button>
+                    <button
+                      onClick={() =>
+                        handleStartInstance(selectedInstanceData.id)
+                      }
+                    >
+                      {t("start")}
+                    </button>
                   )}
 
-                  <button onClick={() => setSettingsModalOpen(true)} className="settings-btn">
-                    {t('settings') || '設定'}
+                  <button
+                    onClick={() => setSettingsModalOpen(true)}
+                    className="settings-btn"
+                  >
+                    {t("settings") || "設定"}
                   </button>
 
-                  <button onClick={() => handleDeleteInstance(selectedInstanceData.id)} className="danger">
-                    {t('delete')}
+                  <button
+                    onClick={() =>
+                      handleDeleteInstance(selectedInstanceData.id)
+                    }
+                    className="danger"
+                  >
+                    {t("delete")}
                   </button>
                 </div>
               </div>
@@ -586,12 +728,32 @@ function App() {
                 instanceVersion={selectedInstanceData.version}
                 autoRestart={!!selectedInstanceData.autoRestart}
                 onUpdateName={async (name) => {
-                  await updateInstanceMetadata(selectedInstanceData.id, { name });
-                  setInstances((prev) => Array.isArray(prev) ? prev.map((it) => it.id === selectedInstanceData.id ? { ...it, name } : it) : prev);
+                  await updateInstanceMetadata(selectedInstanceData.id, {
+                    name,
+                  });
+                  setInstances((prev) =>
+                    Array.isArray(prev)
+                      ? prev.map((it) =>
+                          it.id === selectedInstanceData.id
+                            ? { ...it, name }
+                            : it
+                        )
+                      : prev
+                  );
                 }}
                 onToggleAutoRestart={async (enabled) => {
-                  await updateInstanceMetadata(selectedInstanceData.id, { autoRestart: enabled });
-                  setInstances((prev) => Array.isArray(prev) ? prev.map((it) => it.id === selectedInstanceData.id ? { ...it, autoRestart: enabled } : it) : prev);
+                  await updateInstanceMetadata(selectedInstanceData.id, {
+                    autoRestart: enabled,
+                  });
+                  setInstances((prev) =>
+                    Array.isArray(prev)
+                      ? prev.map((it) =>
+                          it.id === selectedInstanceData.id
+                            ? { ...it, autoRestart: enabled }
+                            : it
+                        )
+                      : prev
+                  );
                 }}
                 onUpdateInstance={async (version) => {
                   await handleUpdateInstance(selectedInstanceData.id, version);
@@ -604,15 +766,27 @@ function App() {
               <div className="tabs">
                 <div className="tab-content">
                   <section className="console">
-                    <h3>{t('consoleLogs')}</h3>
+                    <h3>{t("consoleLogs")}</h3>
                     <div className="log-container">
                       {logs.map((log, i) => (
                         <div key={i} className={`log-entry log-${log.type}`}>
-                          <span className="log-time">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                          <span className="log-type">[{log.type === 'stdout' ? t('logStdout') : log.type === 'stderr' ? t('logStderr') : t('logSystem')}]</span>
-                          <span 
+                          <span className="log-time">
+                            {new Date(log.timestamp).toLocaleTimeString()}
+                          </span>
+                          <span className="log-type">
+                            [
+                            {log.type === "stdout"
+                              ? t("logStdout")
+                              : log.type === "stderr"
+                              ? t("logStderr")
+                              : t("logSystem")}
+                            ]
+                          </span>
+                          <span
                             className="log-message"
-                            dangerouslySetInnerHTML={{ __html: formatLogMessage(log.message) }}
+                            dangerouslySetInnerHTML={{
+                              __html: formatLogMessage(log.message),
+                            }}
                           />
                         </div>
                       ))}
@@ -620,9 +794,9 @@ function App() {
                   </section>
 
                   <section className="config">
-                    <h3>{t('configuration')}</h3>
+                    <h3>{t("configuration")}</h3>
                     {config && (
-                      <ConfigEditor 
+                      <ConfigEditor
                         config={config}
                         onChange={setConfig}
                         onSave={handleSaveConfig}
@@ -634,9 +808,9 @@ function App() {
                     <section className="player-ips">
                       <h3>プレイヤーIP記録</h3>
                       <PlayerIPList playerIPs={playerIPs} />
-                      <button 
+                      <button
                         onClick={() => loadPlayerIPs(selectedInstanceData.id)}
-                        style={{ marginTop: '1rem' }}
+                        style={{ marginTop: "1rem" }}
                       >
                         更新
                       </button>
@@ -647,7 +821,7 @@ function App() {
             </>
           ) : (
             <div className="no-selection">
-              <p>{t('noSelection')}</p>
+              <p>{t("noSelection")}</p>
             </div>
           )}
         </main>

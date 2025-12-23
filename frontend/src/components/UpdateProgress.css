@@ -74,8 +74,12 @@
 
 .progress-fill {
   height: 100%;
-  /* High-contrast gradient to stand out from background */
-  background: linear-gradient(90deg, var(--progress-start, #06b6d4), var(--progress-end, #3b82f6));
+
+  background: linear-gradient(
+    90deg,
+    var(--progress-start, #06b6d4),
+    var(--progress-end, #3b82f6)
+  );
   transform-origin: left center;
   transform: scaleX(0);
   transition: transform 0.3s ease;
@@ -85,7 +89,7 @@
 }
 
 .progress-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;

@@ -23,7 +23,6 @@ import {
 
 
 const PORT = process.env.PORT || 3000;
-const WS_PORT = process.env.WS_PORT || 3001;
 
 const app = express();
 const server = createServer(app);
@@ -34,23 +33,23 @@ const processManager = new ProcessManager();
 const configManager = new ConfigManager();
 const authManager = new AuthManager(serviceManager);
 
-// Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(authManager.authMiddleware());
 
 const isCompiled = Bun.main.endsWith('.exe') || (!Bun.main.includes('/src/') && !Bun.main.includes('\\src\\'));
 
-//Bun compiledの場合
 if (isCompiled) {
 
+  //@ts-expect-error
+    // 開発環境では使わんので無視する
   await import('./embed-files.js');
   console.log(chalk.blue('Using embedded static files'));
 
   const staticRoutes: Record<string, Blob> = {};
   for (const blob of Bun.embeddedFiles) {
-    // @ts-ignore - Bun.embeddedFiles contains Blobs with name property
-    let name = blob.name as string;
+    
+    let name = (blob as any).name as string;
 
     if (name.startsWith('public/')) {
       name = name.substring(7);
@@ -58,7 +57,7 @@ if (isCompiled) {
 
     staticRoutes[`/${name}`] = blob;
 
-    // Ensure common favicon paths are available for browsers that request .ico
+    
     if (name === 'favicon.svg') {
       staticRoutes['/favicon.ico'] = blob;
       staticRoutes['/favicon.png'] = blob;
@@ -74,7 +73,7 @@ if (isCompiled) {
   app.use(async (req, res, next) => {
     let requestPath = req.path;
 
-    // Redirect root to index.html
+    
     if (requestPath === '/') {
       requestPath = '/index.html';
     }
@@ -85,7 +84,7 @@ if (isCompiled) {
       const content = await blob.arrayBuffer();
       const buffer = Buffer.from(content);
 
-      // Set appropriate content type
+      
       let contentType = 'application/octet-stream';
       if (requestPath.endsWith('.html')) contentType = 'text/html';
       else if (requestPath.endsWith('.js')) contentType = 'application/javascript';
@@ -103,12 +102,12 @@ if (isCompiled) {
     }
   });
 } else {
-  // In development, serve from regular public directory
+  
   console.log(chalk.blue('Using regular public directory'));
   app.use(express.static('public'));
 }
 
-// WebSocket connection handling
+
 const clients: Set<WebSocket> = new Set();
 
 wss.on('connection', (ws) => {
@@ -120,14 +119,14 @@ wss.on('connection', (ws) => {
     clients.delete(ws);
   });
 
-  // Send initial data
+  
   ws.send(JSON.stringify({
     type: 'instances',
     data: serviceManager.getAll(),
   }));
 });
 
-// Broadcast to all connected clients
+
 function broadcast(message: any) {
   const data = JSON.stringify(message);
   clients.forEach((client) => {
@@ -137,7 +136,7 @@ function broadcast(message: any) {
   });
 }
 
-// Process Manager event handlers
+
 processManager.on('log', (instanceId: string, type: string, message: string) => {
   broadcast({
     type: 'log',
@@ -148,11 +147,11 @@ processManager.on('log', (instanceId: string, type: string, message: string) => 
   });
 });
 
-// Track restart attempts to avoid tight crash loops
+
 const restartAttempts: Map<string, { count: number; firstAttemptAt: number }> = new Map();
 
 processManager.on('exit', async (instanceId: string, code: number, signal: string) => {
-  // Check if instance still exists before updating
+  
   const instance = serviceManager.getById(instanceId);
   if (instance) {
     await serviceManager.setPid(instanceId, undefined);
@@ -165,26 +164,26 @@ processManager.on('exit', async (instanceId: string, code: number, signal: strin
     signal,
   });
 
-  // Broadcast updated instances list
+  
   broadcast({
     type: 'instances',
     data: serviceManager.getAll(),
   });
 
-  // Auto-restart logic
+  
   try {
     if (instance && instance.autoRestart) {
       const now = Date.now();
       const info = restartAttempts.get(instanceId) || { count: 0, firstAttemptAt: now };
 
-      // Reset counter if first attempt was long ago
+      
       if (now - info.firstAttemptAt > 60_000) {
         info.count = 0;
         info.firstAttemptAt = now;
       }
 
       if (info.count >= 5) {
-        // Too many attempts in a short time, give up and notify
+        
         console.warn(`Auto-restart: giving up restarting ${instanceId} after ${info.count} attempts`);
         broadcast({ type: 'autoRestartFailed', instanceId, attempts: info.count });
         return;
@@ -193,15 +192,15 @@ processManager.on('exit', async (instanceId: string, code: number, signal: strin
       info.count += 1;
       restartAttempts.set(instanceId, info);
 
-      const backoffMs = 1000 * info.count; // 1s, 2s, 3s ...
+      const backoffMs = 1000 * info.count; 
       console.log(`Auto-restart: will attempt to restart ${instanceId} in ${backoffMs}ms (attempt ${info.count})`);
       setTimeout(async () => {
         try {
-          // Re-read instance (it may have been deleted)
+          
           const fresh = serviceManager.getById(instanceId);
           if (!fresh) return;
 
-          // Don't restart if user stopped it manually (PID present or running)
+          
           if (processManager.isRunning(instanceId)) {
             restartAttempts.delete(instanceId);
             return;
@@ -215,7 +214,7 @@ processManager.on('exit', async (instanceId: string, code: number, signal: strin
           await serviceManager.setPid(instanceId, pid);
           configManager.watch(instanceId, fresh.configPath);
 
-          // Reset attempts on success
+          
           restartAttempts.delete(instanceId);
 
           broadcast({ type: 'instanceStarted', instanceId, pid });
@@ -223,7 +222,7 @@ processManager.on('exit', async (instanceId: string, code: number, signal: strin
           console.log(`Auto-restart: restarted ${instanceId} (PID ${pid})`);
         } catch (err: any) {
           console.error(`Auto-restart: failed to restart ${instanceId}: ${err.message}`);
-          // emit a system log entry via processManager 'log' event
+          
           broadcast({ type: 'autoRestartError', instanceId, message: err.message });
         }
       }, backoffMs);
@@ -241,7 +240,7 @@ processManager.on('error', (instanceId: string, error: Error) => {
   });
 });
 
-// Config Manager event handlers
+
 configManager.on('change', (instanceId: string, config: any) => {
   broadcast({
     type: 'configChange',
@@ -250,9 +249,9 @@ configManager.on('change', (instanceId: string, config: any) => {
   });
 });
 
-// REST API Endpoints
 
-// Auth endpoints
+
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -270,7 +269,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = authManager.createSession(username);
     res.cookie('session', token, {
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000, 
       sameSite: 'strict',
     });
 
@@ -307,7 +306,7 @@ app.get('/api/auth/status', async (req, res) => {
 
 app.post('/api/auth/setup', async (req, res) => {
   try {
-    // Only allow setup if no auth is configured
+    
     if (serviceManager.hasAuth()) {
       return res.status(403).json({ error: 'Auth already configured' });
     }
@@ -361,16 +360,16 @@ app.put('/api/auth/change-password', async (req, res) => {
   }
 });
 
-// Expose system info (platform) to frontend so UI can default to the host OS
+
 app.get('/api/system', async (req, res) => {
   try {
-    // Map Node's process.platform and arch to the platform identifiers used by BunProxy releases
+    
     let platform: 'linux' | 'darwin-arm64' | 'windows' = 'linux';
 
     if (process.platform === 'win32') {
       platform = 'windows';
     } else if (process.platform === 'darwin') {
-      // Prefer darwin-arm64 when running on Apple Silicon
+      
       platform = process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-arm64';
     } else {
       platform = 'linux';
@@ -382,7 +381,7 @@ app.get('/api/system', async (req, res) => {
   }
 });
 
-// Get all instances
+
 app.get('/api/instances', async (req, res) => {
   try {
     const instances = serviceManager.getAll();
@@ -392,7 +391,7 @@ app.get('/api/instances', async (req, res) => {
   }
 });
 
-// Get single instance
+
 app.get('/api/instances/:id', async (req, res) => {
   try {
     const instance = serviceManager.getById(req.params.id);
@@ -405,7 +404,7 @@ app.get('/api/instances/:id', async (req, res) => {
   }
 });
 
-// Create new instance (download and setup)
+
 app.post('/api/instances', async (req, res) => {
   try {
     let { name, platform, version } = req.body;
@@ -414,7 +413,7 @@ app.post('/api/instances', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: name, platform, version' });
     }
 
-    // Convert "latest" to actual version
+    
     if (version === 'latest') {
       const latestRelease = await getLatestRelease();
       version = latestRelease.version;
@@ -427,7 +426,7 @@ app.post('/api/instances', async (req, res) => {
     const binaryPath = path.join(dataDir, assetName);
     const configPath = path.join(instanceDir, 'config.yml');
 
-    // Get release info
+    
     const release = await getReleaseByVersion(version);
     const asset = release.assets.find((a) => a.name === assetName);
 
@@ -435,7 +434,7 @@ app.post('/api/instances', async (req, res) => {
       return res.status(404).json({ error: `Asset ${assetName} not found in release ${version}` });
     }
 
-    // Download binary
+    
     await downloadBinary(asset.downloadUrl, binaryPath, (downloaded, total) => {
       broadcast({
         type: 'downloadProgress',
@@ -446,17 +445,17 @@ app.post('/api/instances', async (req, res) => {
       });
     });
 
-    // Set executable permissions
+    
     await setExecutablePermissions(binaryPath);
 
-    // Create instance metadata
+    
     const instance: BunProxyInstance = {
       id: instanceId,
       name,
       version,
       platform,
       binaryPath,
-      dataDir: instanceDir, // Working directory - config.ymlがここにある
+      dataDir: instanceDir, 
       configPath,
       autoRestart: false,
       downloadSource: {
@@ -471,7 +470,7 @@ app.post('/api/instances', async (req, res) => {
       instance,
     });
 
-    // 初回起動してBunProxyにconfig.ymlを生成させる
+    
     console.log(chalk.blue(`Initializing instance ${instanceId}...`));
     broadcast({
       type: 'instanceInitializing',
@@ -484,10 +483,10 @@ app.post('/api/instances', async (req, res) => {
         workingDirectory: instance.dataDir,
       });
 
-      // config.ymlが生成されるまで少し待つ
+      
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // 初期化完了後、停止
+      
       if (processManager.isRunning(instanceId)) {
         processManager.stop(instanceId);
         console.log(chalk.green(`✓ Instance initialized and stopped`));
@@ -520,7 +519,7 @@ app.post('/api/instances', async (req, res) => {
   }
 });
 
-// Delete instance
+
 app.delete('/api/instances/:id', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -530,18 +529,18 @@ app.delete('/api/instances/:id', async (req, res) => {
       return res.status(404).json({ error: 'Instance not found' });
     }
 
-    // Stop process if running
+    
     if (processManager.isRunning(instanceId)) {
       processManager.stop(instanceId, true);
     }
 
-    // Unwatch config
+    
     configManager.unwatch(instanceId);
 
-    // Remove from services
+    
     await serviceManager.remove(instanceId);
 
-    // Delete instance directory
+    
     try {
       await fs.rm(instance.dataDir, { recursive: true, force: true });
       console.log(chalk.green(`✓ Deleted instance directory: ${instance.dataDir}`));
@@ -560,7 +559,7 @@ app.delete('/api/instances/:id', async (req, res) => {
   }
 });
 
-// Start instance
+
 app.post('/api/instances/:id/start', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -581,7 +580,7 @@ app.post('/api/instances/:id/start', async (req, res) => {
 
     await serviceManager.setPid(instanceId, pid);
 
-    // Watch config file
+    
     configManager.watch(instanceId, instance.configPath);
 
     broadcast({
@@ -590,7 +589,7 @@ app.post('/api/instances/:id/start', async (req, res) => {
       pid,
     });
 
-    // Broadcast updated instances list
+    
     broadcast({
       type: 'instances',
       data: serviceManager.getAll(),
@@ -603,7 +602,7 @@ app.post('/api/instances/:id/start', async (req, res) => {
   }
 });
 
-// Stop instance
+
 app.post('/api/instances/:id/stop', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -614,10 +613,10 @@ app.post('/api/instances/:id/stop', async (req, res) => {
 
     processManager.stop(instanceId);
 
-    // Clear PID immediately
+    
     await serviceManager.setPid(instanceId, undefined);
 
-    // Unwatch config
+    
     configManager.unwatch(instanceId);
 
     broadcast({
@@ -625,7 +624,7 @@ app.post('/api/instances/:id/stop', async (req, res) => {
       instanceId,
     });
 
-    // Broadcast updated instances list
+    
     broadcast({
       type: 'instances',
       data: serviceManager.getAll(),
@@ -637,7 +636,7 @@ app.post('/api/instances/:id/stop', async (req, res) => {
   }
 });
 
-// Restart instance
+
 app.post('/api/instances/:id/restart', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -660,7 +659,7 @@ app.post('/api/instances/:id/restart', async (req, res) => {
       pid,
     });
 
-    // Broadcast updated instances list
+    
     broadcast({
       type: 'instances',
       data: serviceManager.getAll(),
@@ -672,7 +671,7 @@ app.post('/api/instances/:id/restart', async (req, res) => {
   }
 });
 
-// Get instance logs
+
 app.get('/api/instances/:id/logs', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -684,7 +683,7 @@ app.get('/api/instances/:id/logs', async (req, res) => {
   }
 });
 
-// Get instance config
+
 app.get('/api/instances/:id/config', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -701,7 +700,7 @@ app.get('/api/instances/:id/config', async (req, res) => {
   }
 });
 
-// Get instance player IPs
+
 app.get('/api/instances/:id/player-ips', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -711,20 +710,20 @@ app.get('/api/instances/:id/player-ips', async (req, res) => {
       return res.status(404).json({ error: 'Instance not found' });
     }
 
-    // playerIP.jsonのパスを取得
+    
     const playerIPPath = path.join(instance.dataDir, 'playerIP.json');
 
     try {
-      // ファイルが存在するかチェック
+      
       await fs.access(playerIPPath);
 
-      // ファイルを読み込む
+      
       const content = await fs.readFile(playerIPPath, 'utf-8');
       const playerIPs = JSON.parse(content);
 
       res.json(playerIPs);
     } catch (error: any) {
-      // ファイルが存在しない、または読み込めない場合は空配列を返す
+      
       if (error.code === 'ENOENT') {
         res.json([]);
       } else {
@@ -736,7 +735,7 @@ app.get('/api/instances/:id/player-ips', async (req, res) => {
   }
 });
 
-// Update instance metadata (e.g., name, autoRestart)
+
 app.put('/api/instances/:id', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -752,7 +751,7 @@ app.put('/api/instances/:id', async (req, res) => {
     if (typeof name === 'string') updates.name = name.trim();
     if (typeof autoRestart === 'boolean') updates.autoRestart = autoRestart;
 
-    // If nothing to update
+    
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
@@ -761,7 +760,7 @@ app.put('/api/instances/:id', async (req, res) => {
 
     broadcast({ type: 'instanceUpdated', instanceId, updates });
 
-    // Broadcast updated instances list
+    
     broadcast({ type: 'instances', data: serviceManager.getAll() });
 
     res.json({ success: true });
@@ -770,7 +769,7 @@ app.put('/api/instances/:id', async (req, res) => {
   }
 });
 
-// Update instance config
+
 app.put('/api/instances/:id/config', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -782,7 +781,7 @@ app.put('/api/instances/:id/config', async (req, res) => {
 
     const config = req.body;
 
-    // Validate config
+    
     const validation = await configManager.validate(config);
     if (!validation.valid) {
       return res.status(400).json({ errors: validation.errors });
@@ -802,7 +801,7 @@ app.put('/api/instances/:id/config', async (req, res) => {
   }
 });
 
-// Check for updates
+
 app.get('/api/updates/check', async (req, res) => {
   try {
     const latestRelease = await getLatestRelease();
@@ -825,7 +824,7 @@ app.get('/api/updates/check', async (req, res) => {
   }
 });
 
-// Get available releases
+
 app.get('/api/releases/latest', async (req, res) => {
   try {
     const release = await getLatestRelease();
@@ -846,7 +845,7 @@ app.get('/api/releases', async (req, res) => {
   }
 });
 
-// Check rate limit status
+
 app.get('/api/rate-limit-status', async (req, res) => {
   try {
     const isLimited = isGitHubRateLimited();
@@ -856,7 +855,7 @@ app.get('/api/rate-limit-status', async (req, res) => {
   }
 });
 
-// Update instance
+
 app.post('/api/instances/:id/update', async (req, res) => {
   try {
     const instanceId = req.params.id;
@@ -867,46 +866,44 @@ app.post('/api/instances/:id/update', async (req, res) => {
       return res.status(404).json({ error: 'Instance not found' });
     }
 
-    // インスタンスが起動中であれば、アップデート前に停止する
     if (processManager.isRunning(instanceId)) {
       console.log(chalk.blue(`Instance ${instanceId} is running — stopping before update...`));
       try {
-        // 停止（強制フラグを true にして確実に停止させる）
         processManager.stop(instanceId, true);
 
-        // PID をクリア
+        
         await serviceManager.setPid(instanceId, undefined);
 
-        // 設定ファイルのウォッチを解除
+        
         configManager.unwatch(instanceId);
 
-        // ブロードキャストで停止を通知
+        
         broadcast({ type: 'instanceStopped', instanceId });
         broadcast({ type: 'instances', data: serviceManager.getAll() });
 
-        // 少し待ってプロセスが完全に停止するのを待つ（最大で 2 秒）
+        
         let wait = 0;
         while (processManager.isRunning(instanceId) && wait < 20) {
-          // 100ms 毎に確認
-          // eslint-disable-next-line no-await-in-loop
+          
+          
           await new Promise((r) => setTimeout(r, 100));
           wait++;
         }
       } catch (err: any) {
         console.warn(chalk.yellow(`Warning: Failed to stop instance ${instanceId} before update: ${err?.message || err}`));
-        // 停止に失敗した場合は処理を中断
+        
         return res.status(500).json({ error: 'Failed to stop instance before update' });
       }
     }
 
-    // Convert "latest" to actual version
+    
     let targetVersion = version;
     if (version === 'latest') {
       const latestRelease = await getLatestRelease();
       targetVersion = latestRelease.version;
     }
 
-    // すでに同じバージョンの場合はスキップ
+    
     if (instance.version === targetVersion) {
       return res.status(400).json({ error: 'Instance is already on this version' });
     }
@@ -914,7 +911,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
     const assetName = getPlatformAssetName(instance.platform, targetVersion);
     const binaryPath = path.join(instance.dataDir, 'data', assetName);
 
-    // Get release info
+    
     const release = await getReleaseByVersion(targetVersion);
     const asset = release.assets.find((a) => a.name === assetName);
 
@@ -922,7 +919,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
       return res.status(404).json({ error: `Asset ${assetName} not found in release ${targetVersion}` });
     }
 
-    // 古いバイナリを削除
+    
     try {
       await fs.rm(instance.binaryPath, { force: true });
       console.log(chalk.green(`✓ Removed old binary: ${instance.binaryPath}`));
@@ -930,7 +927,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
       console.warn(chalk.yellow(`Warning: Could not remove old binary: ${error.message}`));
     }
 
-    // Download binary
+    
     await downloadBinary(asset.downloadUrl, binaryPath, (downloaded, total) => {
       broadcast({
         type: 'updateProgress',
@@ -941,10 +938,10 @@ app.post('/api/instances/:id/update', async (req, res) => {
       });
     });
 
-    // Set executable permissions
+    
     await setExecutablePermissions(binaryPath);
 
-    // Update instance metadata
+    
     instance.version = targetVersion;
     instance.binaryPath = binaryPath;
     instance.downloadSource = {
@@ -983,36 +980,36 @@ app.post('/api/instances/:id/update', async (req, res) => {
   }
 });
 
-// Initialize
+
 async function init() {
   try {
     console.log(chalk.blue('Initializing BunProxy GUI...'));
 
-    // Load services
+    
     await serviceManager.load();
     console.log(chalk.green(`✓ Loaded ${serviceManager.getAll().length} instances`));
 
-    // Verify PIDs and clear stale ones
+    
     const instances = serviceManager.getAll();
     for (const instance of instances) {
       if (instance.pid) {
         try {
-          // Check if process is still running by sending signal 0 (no-op)
+          
           process.kill(instance.pid, 0);
           console.log(chalk.gray(`  Instance ${instance.name} (PID: ${instance.pid}) is still running`));
         } catch (error) {
-          // Process is not running, clear the PID
+          
           console.log(chalk.yellow(`  Clearing stale PID for ${instance.name} (PID: ${instance.pid})`));
           await serviceManager.setPid(instance.id, undefined);
         }
       }
     }
 
-    // Auto-start instances that have autoRestart enabled
+    
     for (const instance of instances) {
       try {
         if (instance.autoRestart && !processManager.isRunning(instance.id)) {
-          // Ensure binary exists
+          
           try {
             await fs.access(instance.binaryPath);
           } catch (err) {
@@ -1037,14 +1034,12 @@ async function init() {
       }
     }
 
-    // Start server
     server.listen(PORT, () => {
       console.log(chalk.green(`✓ Server running on port ${PORT}`));
       console.log(chalk.green(`✓ WebSocket server running on port ${PORT}`));
-      console.log(chalk.blue(`\n  Local: http://localhost:${PORT}`));
+      console.log(chalk.blue(`\n  Local: http://localhost:${PORT}/\n`));
     });
 
-    // Graceful shutdown
     process.on('SIGINT', async () => {
       console.log(chalk.yellow('\nShutting down...'));
       processManager.stopAll();

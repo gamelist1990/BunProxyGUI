@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { t } from '../lang';
-import './Login.css';
+import { useState } from "react";
+import { t } from "../lang";
+import "./Login.css";
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -8,28 +8,28 @@ interface LoginProps {
 }
 
 export function Login({ onLogin, isSetup = false }: LoginProps) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!username || !password) {
-      setError('Username and password are required');
+      setError("Username and password are required");
       return;
     }
 
     if (isSetup) {
       if (password.length < 8) {
-        setError(t('passwordTooShort'));
+        setError(t("passwordTooShort"));
         return;
       }
       if (password !== confirmPassword) {
-        setError(t('passwordMismatch'));
+        setError(t("passwordMismatch"));
         return;
       }
     }
@@ -38,7 +38,7 @@ export function Login({ onLogin, isSetup = false }: LoginProps) {
     try {
       await onLogin(username, password);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('loginFailed'));
+      setError(err instanceof Error ? err.message : t("loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -47,12 +47,14 @@ export function Login({ onLogin, isSetup = false }: LoginProps) {
   return (
     <div className="login-container">
       <div className="login-box">
-        <h1>{isSetup ? t('setupTitle') : t('loginTitle')}</h1>
-        {isSetup && <p className="login-description">{t('setupDescription')}</p>}
-        
+        <h1>{isSetup ? t("setupTitle") : t("loginTitle")}</h1>
+        {isSetup && (
+          <p className="login-description">{t("setupDescription")}</p>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">{t('username')}</label>
+            <label htmlFor="username">{t("username")}</label>
             <input
               id="username"
               type="text"
@@ -64,7 +66,7 @@ export function Login({ onLogin, isSetup = false }: LoginProps) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">{t('password')}</label>
+            <label htmlFor="password">{t("password")}</label>
             <input
               id="password"
               type="password"
@@ -76,7 +78,7 @@ export function Login({ onLogin, isSetup = false }: LoginProps) {
 
           {isSetup && (
             <div className="form-group">
-              <label htmlFor="confirmPassword">{t('confirmPassword')}</label>
+              <label htmlFor="confirmPassword">{t("confirmPassword")}</label>
               <input
                 id="confirmPassword"
                 type="password"
@@ -90,7 +92,7 @@ export function Login({ onLogin, isSetup = false }: LoginProps) {
           {error && <div className="error-message">{error}</div>}
 
           <button type="submit" disabled={loading}>
-            {loading ? '...' : (isSetup ? t('setupButton') : t('loginButton'))}
+            {loading ? "..." : isSetup ? t("setupButton") : t("loginButton")}
           </button>
         </form>
       </div>

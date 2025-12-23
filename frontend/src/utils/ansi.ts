@@ -1,4 +1,6 @@
 // ANSI color codes to CSS color mapping
+
+// Generated Gemini
 const ANSI_COLORS: Record<string, string> = {
   '30': '#000000', // Black
   '31': '#e74856', // Red
@@ -37,6 +39,10 @@ const ANSI_BG_COLORS: Record<string, string> = {
   '107': '#f2f2f2',
 };
 
+// ESC character avoiding control-character literals in source
+//こうしないと無効な制御文字とか言われる(´;ω;｀)
+const ESC = String.fromCharCode(27);
+
 interface AnsiStyle {
   color?: string;
   backgroundColor?: string;
@@ -47,7 +53,7 @@ interface AnsiStyle {
 
 export function stripAnsi(text: string): string {
   // Remove ANSI escape codes
-  return text.replace(/\x1b\[[0-9;]*m/g, '');
+  return text.replace(new RegExp(ESC + '\\[[0-9;]*m', 'g'), '');
 }
 
 export function ansiToHtml(text: string): string {
@@ -56,7 +62,7 @@ export function ansiToHtml(text: string): string {
   let currentText = '';
 
   // Replace ANSI escape sequences with HTML
-  const regex = /\x1b\[([0-9;]*)m/g;
+  const regex = new RegExp(ESC + '\\[([0-9;]*)m', 'g');
   let lastIndex = 0;
   let match;
 
@@ -136,7 +142,7 @@ function escapeHtml(text: string): string {
 
 export function formatLogMessage(message: string): string {
   // Remove box-drawing characters and replace with simple borders
-  let formatted = message
+  const formatted = message
     .replace(/[┌┐└┘├┤┬┴┼]/g, '+')
     .replace(/[─]/g, '-')
     .replace(/[│]/g, '|');

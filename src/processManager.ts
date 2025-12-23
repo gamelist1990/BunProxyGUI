@@ -42,24 +42,24 @@ export class ProcessManager extends EventEmitter {
     this.processes.set(instanceId, child);
     this.logs.set(instanceId, []);
 
-    // Log system message
+    
     this.addLog(instanceId, 'system', `Process started (PID: ${child.pid})`);
 
-    // Capture stdout
+    
     child.stdout?.on('data', (data: Buffer) => {
       const message = data.toString();
       this.addLog(instanceId, 'stdout', message);
       this.emit('log', instanceId, 'stdout', message);
     });
 
-    // Capture stderr
+    
     child.stderr?.on('data', (data: Buffer) => {
       const message = data.toString();
       this.addLog(instanceId, 'stderr', message);
       this.emit('log', instanceId, 'stderr', message);
     });
 
-    // Handle process exit
+    
     child.on('exit', (code, signal) => {
       const message = `Process exited with code ${code}, signal ${signal}`;
       console.log(chalk.yellow(`${instanceId}: ${message}`));
@@ -68,7 +68,7 @@ export class ProcessManager extends EventEmitter {
       this.processes.delete(instanceId);
     });
 
-    // Handle errors
+    
     child.on('error', (error) => {
       const message = `Process error: ${error.message}`;
       console.error(chalk.red(`${instanceId}: ${message}`));
@@ -108,7 +108,7 @@ export class ProcessManager extends EventEmitter {
     if (this.isRunning(instanceId)) {
       this.stop(instanceId);
       
-      // Wait for process to stop
+      
       await new Promise<void>((resolve) => {
         const checkInterval = setInterval(() => {
           if (!this.isRunning(instanceId)) {
@@ -117,7 +117,7 @@ export class ProcessManager extends EventEmitter {
           }
         }, 100);
         
-        // Timeout after 10 seconds
+        
         setTimeout(() => {
           clearInterval(checkInterval);
           resolve();
@@ -154,7 +154,7 @@ export class ProcessManager extends EventEmitter {
       message: message.trim(),
     });
 
-    // Keep only the last N entries
+    
     if (logs.length > this.maxLogEntries) {
       logs.splice(0, logs.length - this.maxLogEntries);
     }

@@ -45,7 +45,7 @@ export class ServiceManager {
       this.data = JSON.parse(content);
     } catch (error: any) {
       if (error.code === 'ENOENT') {
-        // File doesn't exist, create with defaults
+        
         await this.save();
       } else {
         throw error;
@@ -67,7 +67,7 @@ export class ServiceManager {
   }
 
   async add(instance: BunProxyInstance): Promise<void> {
-    // Check if ID already exists
+    
     if (this.getById(instance.id)) {
       throw new Error(`Instance with ID ${instance.id} already exists`);
     }
@@ -108,7 +108,7 @@ export class ServiceManager {
 
   async verifyAuth(username: string, password: string): Promise<boolean> {
     if (!this.data.auth) {
-      return true; // No auth configured, allow access
+      return true; 
     }
     return this.data.auth.username === username && this.data.auth.password === password;
   }

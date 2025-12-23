@@ -8,7 +8,7 @@ const translations = {
   ja_JP,
 };
 
-let currentLanguage: Language = 'ja_JP'; // Default to Japanese
+let currentLanguage: Language = 'ja_JP'; 
 
 export function setLanguage(lang: Language) {
   currentLanguage = lang;

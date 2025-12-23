@@ -4,7 +4,7 @@ import { ServiceManager } from './services.js';
 export class AuthManager {
   private serviceManager: ServiceManager;
   private sessions: Map<string, { username: string; expires: number }> = new Map();
-  private sessionDuration = 24 * 60 * 60 * 1000; // 24 hours
+  private sessionDuration = 24 * 60 * 60 * 1000;
 
   constructor(serviceManager: ServiceManager) {
     this.serviceManager = serviceManager;
@@ -26,12 +26,12 @@ export class AuthManager {
   validateSession(token: string): boolean {
     const session = this.sessions.get(token);
     if (!session) return false;
-    
+
     if (Date.now() > session.expires) {
       this.sessions.delete(token);
       return false;
     }
-    
+
     return true;
   }
 
@@ -41,19 +41,19 @@ export class AuthManager {
 
   authMiddleware() {
     return async (req: Request, res: Response, next: NextFunction) => {
-      // Skip auth for login endpoint and static files
+
       if (req.path === '/api/auth/login' || req.path === '/api/auth/status' || !req.path.startsWith('/api/')) {
         return next();
       }
 
-      // If no auth configured, allow access
+
       if (!this.serviceManager.hasAuth()) {
         return next();
       }
 
-      // Check session token in cookie or header
+
       const token = req.cookies?.session || req.headers['x-session-token'];
-      
+
       if (!token || !this.validateSession(token as string)) {
         return res.status(401).json({ error: 'Unauthorized', requireAuth: true });
       }

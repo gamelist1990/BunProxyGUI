@@ -1,6 +1,3 @@
-/* Industrial UI Theme */
-
-/* Inputs */
 .ui-input-group {
   display: flex;
   flex-direction: column;
@@ -27,7 +24,7 @@
   border-radius: 4px;
   padding: 0.75rem 1rem;
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.9rem;
   transition: all 0.2s ease;
   width: 100%;
@@ -37,7 +34,8 @@
   outline: none;
   border-color: var(--primary-color);
   background: var(--bg-secondary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color), transparent 80%);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--primary-color), transparent 80%);
 }
 
 .ui-input:disabled {
@@ -45,7 +43,6 @@
   cursor: not-allowed;
 }
 
-/* Switch / Checkbox */
 .ui-switch {
   display: flex;
   align-items: center;
@@ -66,7 +63,7 @@
   border: 1px solid var(--border-color);
   border-radius: 12px;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ui-switch-thumb {
@@ -77,8 +74,8 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .ui-switch-input:checked + .ui-switch-track {
@@ -98,7 +95,6 @@
   color: var(--text-primary);
 }
 
-/* Buttons */
 .ui-button {
   display: inline-flex;
   align-items: center;
@@ -116,14 +112,14 @@
 
 .ui-button-primary {
   background: var(--primary-color);
-  color: #fff; /* Always white for contrast on primary */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .ui-button-primary:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .ui-button-secondary {
@@ -158,7 +154,6 @@
   background: var(--bg-tertiary);
 }
 
-/* Card / Panel */
 .ui-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -199,14 +194,12 @@
   padding: 1.5rem;
 }
 
-/* Grid Layout Helper */
 .ui-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
 }
 
-/* Section Divider */
 .ui-divider {
   height: 1px;
   background: var(--border-color);

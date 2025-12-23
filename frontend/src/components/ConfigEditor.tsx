@@ -20,7 +20,7 @@ export function ConfigEditor({ config, onChange, onSave }: ConfigEditorProps) {
     setLocalConfig(config);
   }, [config]);
 
-  const handleChange = (field: keyof BunProxyConfig, value: any) => {
+  const handleChange = <K extends keyof BunProxyConfig>(field: K, value: BunProxyConfig[K]) => {
     const updated = { ...localConfig, [field]: value };
     setLocalConfig(updated);
     onChange(updated);
@@ -45,7 +45,9 @@ export function ConfigEditor({ config, onChange, onSave }: ConfigEditorProps) {
                 const parsed = JSON.parse(e.target.value);
                 setLocalConfig(parsed);
                 onChange(parsed);
-              } catch {}
+              } catch {
+                //JSon parse error
+              }
             }}
             rows={20}
             className="w-full p-4 bg-tertiary text-primary font-mono text-sm border border-border rounded-md focus:outline-none focus:border-primary"

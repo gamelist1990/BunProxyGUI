@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { t } from '../lang';
-import './InstanceSettingsModal.css';
+import { useState, useEffect } from "react";
+import { t } from "../lang";
+import "./InstanceSettingsModal.css";
 
 interface InstanceSettingsModalProps {
   isOpen: boolean;
@@ -8,7 +8,6 @@ interface InstanceSettingsModalProps {
   instanceName: string;
   instanceVersion: string;
   autoRestart: boolean;
-  /** 自動起動設定（起動時に自動でインスタンスを起動する） */
   autoStart?: boolean;
   onUpdateName: (name: string) => Promise<void>;
   onToggleAutoRestart: (enabled: boolean) => Promise<void>;
@@ -25,7 +24,6 @@ export function InstanceSettingsModal({
   instanceName,
   instanceVersion,
   autoRestart,
-  /** 自動起動の現在値 (optional) */
   autoStart,
   onUpdateName,
   onToggleAutoRestart,
@@ -38,7 +36,7 @@ export function InstanceSettingsModal({
   const [nameInput, setNameInput] = useState(instanceName);
   const [autoRestartChecked, setAutoRestartChecked] = useState(autoRestart);
   const [autoStartChecked, setAutoStartChecked] = useState(autoStart ?? false);
-  const [selectedVersion, setSelectedVersion] = useState('latest');
+  const [selectedVersion, setSelectedVersion] = useState("latest");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -47,18 +45,16 @@ export function InstanceSettingsModal({
     setAutoStartChecked(autoStart ?? false);
   }, [instanceName, autoRestart, autoStart]);
 
-  // Prevent background scrolling when modal is open
   useEffect(() => {
     if (!isOpen) return;
 
-    const prevOverflow = document.body.style.overflow || '';
-    const prevPaddingRight = document.body.style.paddingRight || '';
+    const prevOverflow = document.body.style.overflow || "";
+    const prevPaddingRight = document.body.style.paddingRight || "";
 
-    // Prevent body scroll
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
 
-    // Compensate for missing scrollbar to avoid layout shift
-    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const scrollBarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
     if (scrollBarWidth > 0) {
       document.body.style.paddingRight = `${scrollBarWidth}px`;
     }
@@ -74,37 +70,39 @@ export function InstanceSettingsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Update name if changed
       if (nameInput !== instanceName && nameInput.trim()) {
         await onUpdateName(nameInput.trim());
       }
 
-      // Update auto-restart if changed
       if (autoRestartChecked !== autoRestart) {
         await onToggleAutoRestart(autoRestartChecked);
       }
 
-      // Update auto-start if provided and changed
-      if (typeof onToggleAutoStart === 'function' && (autoStartChecked !== (autoStart ?? false))) {
+      if (
+        typeof onToggleAutoStart === "function" &&
+        autoStartChecked !== (autoStart ?? false)
+      ) {
         await onToggleAutoStart(autoStartChecked);
       }
 
       onClose();
     } catch (error) {
       const err = error as Error;
-      alert(`${t('errorSaveConfig')}: ${err.message}`);
+      alert(`${t("errorSaveConfig")}: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleUpdate = async () => {
-    if (confirm(`インスタンスをバージョン ${selectedVersion} にアップデートしますか？`)) {
-      // モーダルはボタン押下直後に閉じる（アップデート処理はバックグラウンドで継続）
+    if (
+      confirm(
+        `インスタンスをバージョン ${selectedVersion} にアップデートしますか？`
+      )
+    ) {
       try {
         onClose();
       } finally {
-        // 非同期処理は待たずに実行（モーダル表示をブロックしない）
         void onUpdateInstance(selectedVersion);
       }
     }
@@ -112,23 +110,30 @@ export function InstanceSettingsModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content instance-settings-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content instance-settings-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
-          <h2>{t('instanceSettings') || 'インスタンス設定'}</h2>
-          <button className="close-button" onClick={onClose}>×</button>
+          <h2>{t("instanceSettings") || "インスタンス設定"}</h2>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
           <div className="setting-section">
             <label htmlFor="instance-name">
-              {t('instanceName') || 'インスタンス名'}
+              {t("instanceName") || "インスタンス名"}
             </label>
             <input
               id="instance-name"
               type="text"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
-              placeholder={t('placeholderInstanceName') || 'インスタンス名を入力'}
+              placeholder={
+                t("placeholderInstanceName") || "インスタンス名を入力"
+              }
             />
           </div>
 
@@ -139,10 +144,11 @@ export function InstanceSettingsModal({
                 checked={autoStartChecked}
                 onChange={(e) => setAutoStartChecked(e.target.checked)}
               />
-              <span>{t('autoStart') || '自動起動'}</span>
+              <span>{t("autoStart") || "自動起動"}</span>
             </label>
             <small className="setting-description">
-              {t('autoStartDescription') || 'システム起動時に自動的にインスタンスを起動します'}
+              {t("autoStartDescription") ||
+                "システム起動時に自動的にインスタンスを起動します"}
             </small>
           </div>
 
@@ -153,20 +159,21 @@ export function InstanceSettingsModal({
                 checked={autoRestartChecked}
                 onChange={(e) => setAutoRestartChecked(e.target.checked)}
               />
-              <span>{t('autoRestart') || '自動再起動'}</span>
+              <span>{t("autoRestart") || "自動再起動"}</span>
             </label>
             <small className="setting-description">
-              {t('autoRestartDescription') || 'プロセスが停止した場合、自動的に再起動します'}
+              {t("autoRestartDescription") ||
+                "プロセスが停止した場合、自動的に再起動します"}
             </small>
           </div>
 
           <div className="setting-section">
             <label htmlFor="version-select">
-              {t('updateVersion') || 'アップデート'}
+              {t("updateVersion") || "アップデート"}
             </label>
             <div className="version-info">
               <span className="current-version">
-                {t('currentVersion') || '現在のバージョン'}: v{instanceVersion}
+                {t("currentVersion") || "現在のバージョン"}: v{instanceVersion}
               </span>
             </div>
             <select
@@ -176,7 +183,7 @@ export function InstanceSettingsModal({
               disabled={isUpdating}
             >
               <option value="latest">
-                {t('latestVersion') || '最新版'} (v{latestVersion})
+                {t("latestVersion") || "最新版"} (v{latestVersion})
               </option>
               {availableVersions.map((version) => (
                 <option key={version} value={version}>
@@ -189,17 +196,27 @@ export function InstanceSettingsModal({
               onClick={handleUpdate}
               disabled={isUpdating}
             >
-              {isUpdating ? t('updating') || '更新中...' : t('updateNow') || '今すぐアップデート'}
+              {isUpdating
+                ? t("updating") || "更新中..."
+                : t("updateNow") || "今すぐアップデート"}
             </button>
           </div>
         </div>
 
         <div className="modal-footer">
-          <button className="cancel-button" onClick={onClose} disabled={isSaving}>
-            {t('cancel') || 'キャンセル'}
+          <button
+            className="cancel-button"
+            onClick={onClose}
+            disabled={isSaving}
+          >
+            {t("cancel") || "キャンセル"}
           </button>
-          <button className="save-button" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? t('saving') || '保存中...' : t('save') || '保存'}
+          <button
+            className="save-button"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? t("saving") || "保存中..." : t("save") || "保存"}
           </button>
         </div>
       </div>

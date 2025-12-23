@@ -1,8 +1,6 @@
-#!/usr/bin/env bun
 import { readdirSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-// Recursively find all files in a directory
 function findFiles(dir: string, baseDir: string = dir): string[] {
   const files: string[] = [];
   
