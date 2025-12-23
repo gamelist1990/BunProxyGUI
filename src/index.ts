@@ -58,6 +58,12 @@ if (isCompiled) {
     }
     
     staticRoutes[`/${name}`] = blob;
+
+    // Ensure common favicon paths are available for browsers that request .ico
+    if (name === 'favicon.svg') {
+      staticRoutes['/favicon.ico'] = blob;
+      staticRoutes['/favicon.png'] = blob;
+    }
     
     if (name.startsWith('index-')) {
       staticRoutes[`/assets/${name}`] = blob;
@@ -87,6 +93,7 @@ if (isCompiled) {
       else if (requestPath.endsWith('.css')) contentType = 'text/css';
       else if (requestPath.endsWith('.json')) contentType = 'application/json';
       else if (requestPath.endsWith('.svg')) contentType = 'image/svg+xml';
+      else if (requestPath.endsWith('.ico')) contentType = 'image/x-icon';
       else if (requestPath.endsWith('.png')) contentType = 'image/png';
       else if (requestPath.endsWith('.jpg') || requestPath.endsWith('.jpeg')) contentType = 'image/jpeg';
       
@@ -457,7 +464,7 @@ app.post('/api/instances', async (req, res) => {
       autoRestart: false,
       downloadSource: {
         url: asset.downloadUrl,
-        sha256: expectedSha256 || '',
+        sha256: '',
       },
     };
 
@@ -1005,6 +1012,35 @@ async function init() {
           console.log(chalk.yellow(`  Clearing stale PID for ${instance.name} (PID: ${instance.pid})`));
           await serviceManager.setPid(instance.id, undefined);
         }
+      }
+    }
+
+    // Auto-start instances that have autoRestart enabled
+    for (const instance of instances) {
+      try {
+        if (instance.autoRestart && !processManager.isRunning(instance.id)) {
+          // Ensure binary exists
+          try {
+            await fs.access(instance.binaryPath);
+          } catch (err) {
+            console.log(chalk.yellow(`  Skipping auto-start for ${instance.name}: binary not found at ${instance.binaryPath}`));
+            continue;
+          }
+
+          console.log(chalk.blue(`Auto-starting instance ${instance.name} (${instance.id})`));
+          const pid = processManager.start(instance.id, {
+            binaryPath: instance.binaryPath,
+            workingDirectory: instance.dataDir,
+          });
+
+          await serviceManager.setPid(instance.id, pid);
+          configManager.watch(instance.id, instance.configPath);
+
+          broadcast({ type: 'instanceStarted', instanceId: instance.id, pid });
+          broadcast({ type: 'instances', data: serviceManager.getAll() });
+        }
+      } catch (err: any) {
+        console.warn(chalk.yellow(`  Failed to auto-start ${instance.name}: ${err?.message || err}`));
       }
     }
 

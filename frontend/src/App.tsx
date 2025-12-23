@@ -502,6 +502,10 @@ function App() {
                   <span className="instance-status">
                     {initializingInstances.has(instance.id) ? t('initializing') : instance.pid ? t('running') : t('stopped')}
                   </span>
+                  {instance.autoRestart && (
+                    <span className="auto-restart-badge" title={t('autoRestart') || '自動起動'} style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--primary-color)' }}>
+                    </span>
+                  )}
                   <small>{instance.platform} v{instance.version}</small>
                 </div>
               </div>
