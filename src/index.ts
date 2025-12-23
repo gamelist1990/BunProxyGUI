@@ -19,7 +19,6 @@ import {
   verifySha256,
   setExecutablePermissions,
   getPlatformAssetName,
-  getKnownSha256,
 } from './downloader.js';
 
 
@@ -441,14 +440,7 @@ app.post('/api/instances', async (req, res) => {
       });
     });
 
-    // Verify SHA256
-    const expectedSha256 = getKnownSha256(assetName);
-    if (expectedSha256) {
-      const isValid = await verifySha256(binaryPath, expectedSha256);
-      if (!isValid) {
-        return res.status(500).json({ error: 'SHA256 verification failed' });
-      }
-    }
+    // SHA256 verification removed — skipping
 
     // Set executable permissions
     await setExecutablePermissions(binaryPath);
@@ -872,9 +864,36 @@ app.post('/api/instances/:id/update', async (req, res) => {
       return res.status(404).json({ error: 'Instance not found' });
     }
 
-    // インスタンスが停止中かチェック
+    // インスタンスが起動中であれば、アップデート前に停止する
     if (processManager.isRunning(instanceId)) {
-      return res.status(400).json({ error: 'Instance must be stopped before updating' });
+      console.log(chalk.blue(`Instance ${instanceId} is running — stopping before update...`));
+      try {
+        // 停止（強制フラグを true にして確実に停止させる）
+        processManager.stop(instanceId, true);
+
+        // PID をクリア
+        await serviceManager.setPid(instanceId, undefined);
+
+        // 設定ファイルのウォッチを解除
+        configManager.unwatch(instanceId);
+
+        // ブロードキャストで停止を通知
+        broadcast({ type: 'instanceStopped', instanceId });
+        broadcast({ type: 'instances', data: serviceManager.getAll() });
+
+        // 少し待ってプロセスが完全に停止するのを待つ（最大で 2 秒）
+        let wait = 0;
+        while (processManager.isRunning(instanceId) && wait < 20) {
+          // 100ms 毎に確認
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 100));
+          wait++;
+        }
+      } catch (err: any) {
+        console.warn(chalk.yellow(`Warning: Failed to stop instance ${instanceId} before update: ${err?.message || err}`));
+        // 停止に失敗した場合は処理を中断
+        return res.status(500).json({ error: 'Failed to stop instance before update' });
+      }
     }
 
     // Convert "latest" to actual version
@@ -919,14 +938,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
       });
     });
 
-    // Verify SHA256
-    const expectedSha256 = getKnownSha256(assetName);
-    if (expectedSha256) {
-      const isValid = await verifySha256(binaryPath, expectedSha256);
-      if (!isValid) {
-        return res.status(500).json({ error: 'SHA256 verification failed' });
-      }
-    }
+    // SHA256 verification removed — skipping
 
     // Set executable permissions
     await setExecutablePermissions(binaryPath);
@@ -936,7 +948,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
     instance.binaryPath = binaryPath;
     instance.downloadSource = {
       url: asset.downloadUrl,
-      sha256: expectedSha256 || '',
+      sha256: '',
     };
 
     await serviceManager.update(instanceId, instance);

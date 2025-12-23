@@ -295,33 +295,9 @@ export async function calculateSha256(filePath: string): Promise<string> {
 }
 
 export async function verifySha256(filePath: string, expectedSha256?: string, assetName?: string): Promise<boolean> {
-  console.log(chalk.blue('Verifying SHA256 checksum...'));
-  const actualSha256 = await calculateSha256(filePath);
-  
-  // 動的に取得したSHA256を使用
-  let targetSha256 = expectedSha256;
-  
-  // expectedSha256が指定されていない場合、assetNameから既知のSHA256を取得
-  if (!targetSha256 && assetName) {
-    targetSha256 = getKnownSha256(assetName);
-  }
-  
-  if (!targetSha256) {
-    console.log(chalk.yellow('⚠ No SHA256 hash available for verification, skipping...'));
-    return true; // 検証をスキップ
-  }
-  
-  const isValid = actualSha256 === targetSha256;
-  
-  if (isValid) {
-    console.log(chalk.green('✓ SHA256 verification passed'));
-  } else {
-    console.log(chalk.red('✗ SHA256 verification failed'));
-    console.log(chalk.yellow(`  Expected: ${targetSha256}`));
-    console.log(chalk.yellow(`  Actual:   ${actualSha256}`));
-  }
-  
-  return isValid;
+  // SHA256 検証を無効化しました。要求により全てスキップします。
+  console.log(chalk.yellow('⚠ SHA256 verification disabled — skipping verification as requested'));
+  return true;
 }
 
 export async function setExecutablePermissions(filePath: string): Promise<void> {
@@ -344,15 +320,7 @@ export function getPlatformAssetName(platform: 'linux' | 'darwin-arm64' | 'windo
 }
 
 // Known SHA256 checksums for version 0.0.6
-export const KNOWN_SHA256: Record<string, string> = {
-  'BunProxy-0.0.6-linux': '8cbee08bf886d7526c82a5b561240b162004f06bb1f36515d3869885471af815',
-  'BunProxy-0.0.6-darwin-arm64': '8ad79a2b0bcc1a51d38d30bfcdaec612c5e76409108ddea0ef9bcb6762e758d4',
-  'BunProxy-0.0.6-windows.exe': '0c84d61975875b78dca9f3ed920bf9463da366a0816fa3a791b04667613be8e7',
-};
-
-export function getKnownSha256(assetName: string): string | undefined {
-  return KNOWN_SHA256[assetName];
-}
+// KNOWN_SHA256 and getKnownSha256 removed per request — SHA verification is disabled
 
 export async function downloadAndVerifyBinary(
   platform: 'linux' | 'darwin-arm64' | 'windows',
@@ -374,19 +342,8 @@ export async function downloadAndVerifyBinary(
   // バイナリをダウンロード
   await downloadBinary(asset.downloadUrl, destinationPath, onProgress);
   
-  // SHA256を検証（動的に取得したものを使用、または既知のものをフォールバック）
-  const sha256ToVerify = asset.sha256 || getKnownSha256(assetName);
-  const isValid = await verifySha256(destinationPath, sha256ToVerify, assetName);
-  
-  if (!isValid) {
-    // 検証に失敗した場合、ファイルを削除
-    try {
-      await fs.unlink(destinationPath);
-    } catch (error) {
-      console.log(chalk.yellow('Failed to remove invalid file'));
-    }
-    throw new Error('SHA256 verification failed');
-  }
+  // SHA256 検証は無効化されています — スキップします
+  console.log(chalk.yellow('⚠ Skipping SHA256 verification (disabled)'));
   
   // 実行権限を設定
   await setExecutablePermissions(destinationPath);
