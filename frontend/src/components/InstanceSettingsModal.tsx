@@ -87,8 +87,13 @@ export function InstanceSettingsModal({
 
   const handleUpdate = async () => {
     if (confirm(`インスタンスをバージョン ${selectedVersion} にアップデートしますか？`)) {
-      await onUpdateInstance(selectedVersion);
-      onClose();
+      // モーダルはボタン押下直後に閉じる（アップデート処理はバックグラウンドで継続）
+      try {
+        onClose();
+      } finally {
+        // 非同期処理は待たずに実行（モーダル表示をブロックしない）
+        void onUpdateInstance(selectedVersion);
+      }
     }
   };
 
