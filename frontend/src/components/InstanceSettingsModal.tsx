@@ -39,6 +39,28 @@ export function InstanceSettingsModal({
     setAutoRestartChecked(autoRestart);
   }, [instanceName, autoRestart, isOpen]);
 
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const prevOverflow = document.body.style.overflow || '';
+    const prevPaddingRight = document.body.style.paddingRight || '';
+
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+
+    // Compensate for missing scrollbar to avoid layout shift
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSave = async () => {

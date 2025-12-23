@@ -557,7 +557,7 @@ function App() {
                   )}
 
                   <button onClick={() => setSettingsModalOpen(true)} className="settings-btn">
-                    ⚙️ {t('settings') || '設定'}
+                    {t('settings') || '設定'}
                   </button>
 
                   <button onClick={() => handleDeleteInstance(selectedInstanceData.id)} className="danger">
