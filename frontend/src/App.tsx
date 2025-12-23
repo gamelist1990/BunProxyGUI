@@ -21,14 +21,18 @@ import {
   setupAuth,
   fetchPlayerIPs,
   updateInstance,
+  updateInstanceMetadata,
+  fetchSystemInfo,
 } from './api';
 import { t, setLanguage, getLanguage, type Language } from './lang';
 import { Login } from './components/Login';
 import { ConfigEditor } from './components/ConfigEditor';
 import { PlayerIPList } from './components/PlayerIPList';
 import { UpdateProgress } from './components/UpdateProgress';
+import { InstanceSettingsModal } from './components/InstanceSettingsModal';
 import { formatLogMessage } from './utils/ansi';
 import { DEFAULT_BUNPROXY_VERSION } from './utils/version';
+import type { WebSocketEventMap, UpdateCheckResult } from './api';
 
 function App() {
   const [instances, setInstances] = useState<BunProxyInstance[]>([]);
@@ -76,14 +80,27 @@ function App() {
   // Check auth status on mount
   useEffect(() => {
     checkAuth();
+  }); // checkAuth is defined below, so no dependency needed
+
+  // Fetch host system info (platform) and set as default for new instance platform
+  useEffect(() => {
+    fetchSystemInfo()
+      .then((info) => {
+        if (info && info.platform) {
+          setNewInstanceForm((prev) => ({ ...prev, platform: info.platform }));
+        }
+      })
+      .catch(() => {
+        // ignore failures, keep default
+      });
   }, []);
 
-  async function checkAuth() {
+  const checkAuth = async () => {
     try {
       const status = await checkAuthStatus();
       setAuthStatus(status);
       setAuthChecked(true);
-      
+
       if (status.isAuthenticated) {
         loadInstances();
       }
@@ -91,7 +108,7 @@ function App() {
       console.error('Auth check failed:', error);
       setAuthChecked(true);
     }
-  }
+  };
 
   async function handleLogin(username: string, password: string) {
     if (!authStatus) return;
@@ -122,47 +139,48 @@ function App() {
   // WebSocket listeners
   useEffect(() => {
     const unsubscribes = [
-      on('instances', (data: any) => {
-        setInstances(data.data || data);
+      on('instances', (data: WebSocketEventMap['instances']) => {
+        const instancesData = Array.isArray(data) ? data : data.data || [];
+        setInstances(instancesData);
       }),
       on('instanceAdded', () => loadInstances()),
       on('instanceRemoved', () => loadInstances()),
-      on('instanceStarted', (data: any) => {
+      on('instanceStarted', (data: WebSocketEventMap['instanceStarted']) => {
         // Update instances list to reflect the new PID and status
-        setInstances(prev => prev.map(inst => 
-          inst.id === data.instanceId 
+        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
+          inst.id === data.instanceId
             ? { ...inst, pid: data.pid, lastStarted: new Date().toISOString() }
             : inst
-        ));
+        ) : prev);
       }),
-      on('instanceStopped', (data: any) => {
+      on('instanceStopped', (data: WebSocketEventMap['instanceStopped']) => {
         // Update instances list to clear PID
-        setInstances(prev => prev.map(inst => 
-          inst.id === data.instanceId 
+        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
+          inst.id === data.instanceId
             ? { ...inst, pid: undefined, lastStarted: undefined }
             : inst
-        ));
+        ) : prev);
       }),
-      on('instanceRestarted', (data: any) => {
+      on('instanceRestarted', (data: WebSocketEventMap['instanceRestarted']) => {
         // Update instances list with new PID
-        setInstances(prev => prev.map(inst => 
-          inst.id === data.instanceId 
+        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
+          inst.id === data.instanceId
             ? { ...inst, pid: data.pid, lastStarted: new Date().toISOString() }
             : inst
-        ));
+        ) : prev);
       }),
-      on('processExit', (data: any) => {
+      on('processExit', (data: WebSocketEventMap['processExit']) => {
         // Update instances list to clear PID when process exits
-        setInstances(prev => prev.map(inst => 
-          inst.id === data.instanceId 
+        setInstances(prev => Array.isArray(prev) ? prev.map(inst =>
+          inst.id === data.instanceId
             ? { ...inst, pid: undefined }
             : inst
-        ));
+        ) : prev);
       }),
-      on('instanceInitializing', (data: any) => {
+      on('instanceInitializing', (data: WebSocketEventMap['instanceInitializing']) => {
         setInitializingInstances(prev => new Set(prev).add(data.instanceId));
       }),
-      on('instanceInitialized', (data: any) => {
+      on('instanceInitialized', (data: WebSocketEventMap['instanceInitialized']) => {
         setInitializingInstances(prev => {
           const next = new Set(prev);
           next.delete(data.instanceId);
@@ -170,7 +188,7 @@ function App() {
         });
         loadInstances();
       }),
-      on('updateProgress', (data: any) => {
+      on('updateProgress', (data: WebSocketEventMap['updateProgress']) => {
         setUpdatingInstances(prev => {
           const next = new Map(prev);
           const current = next.get(data.instanceId);
@@ -181,7 +199,7 @@ function App() {
           return next;
         });
       }),
-      on('instanceUpdated', (data: any) => {
+      on('instanceUpdated', (data: WebSocketEventMap['instanceUpdated']) => {
         setUpdatingInstances(prev => {
           const next = new Map(prev);
           next.delete(data.instanceId);
@@ -190,20 +208,20 @@ function App() {
         loadInstances();
         alert(`アップデートが完了しました: v${data.version}`);
       }),
-      on('log', (data: any) => {
+      on('log', (data: WebSocketEventMap['log']) => {
         if (data.instanceId === selectedInstance) {
           setLogs((prev) => [
             ...prev,
-            { timestamp: data.timestamp, type: data.logType, message: data.message },
+            { timestamp: data.timestamp, type: data.logType as 'stdout' | 'stderr' | 'system', message: data.message },
           ]);
         }
       }),
-      on('configUpdated', (data: any) => {
+      on('configUpdated', (data: WebSocketEventMap['configUpdated']) => {
         if (data.instanceId === selectedInstance) {
           setConfig(data.config);
         }
       }),
-      on('rateLimitError', (data: any) => {
+      on('rateLimitError', (data: WebSocketEventMap['rateLimitError']) => {
         alert(`⚠️ ${data.message}`);
       }),
     ];
@@ -276,24 +294,25 @@ function App() {
   async function handleCreateInstance() {
     try {
       setIsCreating(true);
-      
+
       // バージョンが設定されていない、またはリリース情報がない場合のみフェッチ
       if (availableVersions.length === 1 && availableVersions[0] === DEFAULT_BUNPROXY_VERSION) {
         try {
           await loadReleases();
-        } catch (error) {
+        } catch {
           console.warn('Failed to load releases, using default version');
         }
       }
-      
+
       await createInstance(newInstanceForm);
       setNewInstanceForm({ name: '', platform: 'linux', version: DEFAULT_BUNPROXY_VERSION });
       await loadInstances();
-    } catch (error: any) {
-      if (error.message && error.message.includes('レート制限')) {
-        alert(`⚠️ ${error.message}\n\n新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。`);
+    } catch (error) {
+      const err = error as Error;
+      if (err.message && err.message.includes('レート制限')) {
+        alert(`⚠️ ${err.message}\n\n新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。`);
       } else {
-        alert(`${t('errorCreateInstance')} ${error.message}`);
+        alert(`${t('errorCreateInstance')} ${err.message}`);
       }
     } finally {
       setIsCreating(false);
@@ -302,38 +321,42 @@ function App() {
 
   async function handleDeleteInstance(id: string) {
     if (!confirm(t('confirmDelete'))) return;
-    
+
     try {
       await deleteInstance(id);
       if (selectedInstance === id) {
         setSelectedInstance(null);
       }
-    } catch (error: any) {
-      alert(`${t('errorDeleteInstance')} ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      alert(`${t('errorDeleteInstance')} ${err.message}`);
     }
   }
 
   async function handleStartInstance(id: string) {
     try {
       await startInstance(id);
-    } catch (error: any) {
-      alert(`${t('errorStartInstance')} ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      alert(`${t('errorStartInstance')} ${err.message}`);
     }
   }
 
   async function handleStopInstance(id: string) {
     try {
       await stopInstance(id);
-    } catch (error: any) {
-      alert(`${t('errorStopInstance')} ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      alert(`${t('errorStopInstance')} ${err.message}`);
     }
   }
 
   async function handleRestartInstance(id: string) {
     try {
       await restartInstance(id);
-    } catch (error: any) {
-      alert(`${t('errorRestartInstance')} ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      alert(`${t('errorRestartInstance')} ${err.message}`);
     }
   }
 
@@ -343,8 +366,9 @@ function App() {
     try {
       await updateConfig(selectedInstance, config);
       alert(t('configSaved'));
-    } catch (error: any) {
-      alert(`${t('errorSaveConfig')} ${error.message}`);
+    } catch (error) {
+      const err = error as Error;
+      alert(`${t('errorSaveConfig')} ${err.message}`);
     }
   }
 
@@ -352,26 +376,27 @@ function App() {
     try {
       // リリース情報を取得
       await loadReleases();
-      
-      const data = await checkUpdates();
-      const hasUpdates = data.updates.some((u: any) => u.hasUpdate);
+
+      const data: UpdateCheckResult = await checkUpdates();
+      const hasUpdates = data.updates.some((u) => u.hasUpdate);
       if (hasUpdates) {
         alert(`${t('updatesAvailable')} ${data.latestRelease.version}`);
       } else {
         alert(t('allUpToDate'));
       }
-    } catch (error: any) {
-      if (error.message && (error.message.includes('rate limit') || error.message.includes('レート制限'))) {
+    } catch (error) {
+      const err = error as Error;
+      if (err.message && (err.message.includes('rate limit') || err.message.includes('レート制限'))) {
         alert(`⚠️ GitHub APIのレート制限に達しました。\n\n更新確認ができません。しばらく待ってから再度試してください。`);
       } else {
-        alert(`${t('errorCheckUpdates')} ${error.message}`);
+        alert(`${t('errorCheckUpdates')} ${err.message}`);
       }
     }
   }
 
   async function handleUpdateInstance(instanceId: string, version: string = 'latest') {
     if (!confirm(`インスタンスをバージョン ${version} にアップデートしますか？`)) return;
-    
+
     try {
       // プログレス開始
       setUpdatingInstances(prev => {
@@ -381,25 +406,30 @@ function App() {
       });
 
       await updateInstance(instanceId, version);
-      
+
       // 成功時は自動的にWebSocketのinstanceUpdatedイベントで処理される
-    } catch (error: any) {
+    } catch (error) {
       setUpdatingInstances(prev => {
         const next = new Map(prev);
         next.delete(instanceId);
         return next;
       });
-      
-      if (error.message && (error.message.includes('rate limit') || error.message.includes('レート制限'))) {
+
+      const err = error as Error;
+      if (err.message && (err.message.includes('rate limit') || err.message.includes('レート制限'))) {
         alert(`⚠️ GitHub APIのレート制限に達しました。\n\nアップデートができません。しばらく待ってから再度試してください。`);
       } else {
-        alert(`アップデートに失敗しました: ${error.message}`);
+        alert(`アップデートに失敗しました: ${err.message}`);
       }
     }
   }
 
-  const selectedInstanceData = instances.find((i) => i.id === selectedInstance);
+  const selectedInstanceData = Array.isArray(instances) ? instances.find((i) => i.id === selectedInstance) : null;
   const updateProgress = selectedInstance ? updatingInstances.get(selectedInstance) : undefined;
+
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+
 
   // Show loading while checking auth
   if (!authChecked) {
@@ -456,7 +486,7 @@ function App() {
         <aside className="sidebar">
           <h2>{t('instances')}</h2>
           <div className="instance-list">
-            {instances.map((instance) => (
+            {Array.isArray(instances) && instances.map((instance) => (
               <div
                 key={instance.id}
                 className={`instance-item ${selectedInstance === instance.id ? 'selected' : ''} ${initializingInstances.has(instance.id) ? 'initializing' : ''}`}
@@ -483,7 +513,7 @@ function App() {
             />
             <select
               value={newInstanceForm.platform}
-              onChange={(e) => setNewInstanceForm({ ...newInstanceForm, platform: e.target.value as any })}
+              onChange={(e) => setNewInstanceForm({ ...newInstanceForm, platform: e.target.value as 'linux' | 'darwin-arm64' | 'windows' })}
             >
               <option value="linux">{t('platformLinux')}</option>
               <option value="darwin-arm64">{t('platformMacOS')}</option>
@@ -518,17 +548,13 @@ function App() {
                       <button onClick={() => handleRestartInstance(selectedInstanceData.id)}>{t('restart')}</button>
                     </>
                   ) : (
-                    <>
-                      <button onClick={() => handleStartInstance(selectedInstanceData.id)}>{t('start')}</button>
-                      <button 
-                        onClick={() => handleUpdateInstance(selectedInstanceData.id, 'latest')}
-                        className="update-btn"
-                        disabled={updatingInstances.has(selectedInstanceData.id)}
-                      >
-                        アップデート
-                      </button>
-                    </>
+                    <button onClick={() => handleStartInstance(selectedInstanceData.id)}>{t('start')}</button>
                   )}
+
+                  <button onClick={() => setSettingsModalOpen(true)} className="settings-btn">
+                    ⚙️ {t('settings') || '設定'}
+                  </button>
+
                   <button onClick={() => handleDeleteInstance(selectedInstanceData.id)} className="danger">
                     {t('delete')}
                   </button>
@@ -543,6 +569,28 @@ function App() {
                   targetVersion={updateProgress.targetVersion}
                 />
               )}
+
+              <InstanceSettingsModal
+                isOpen={settingsModalOpen}
+                onClose={() => setSettingsModalOpen(false)}
+                instanceName={selectedInstanceData.name}
+                instanceVersion={selectedInstanceData.version}
+                autoRestart={!!selectedInstanceData.autoRestart}
+                onUpdateName={async (name) => {
+                  await updateInstanceMetadata(selectedInstanceData.id, { name });
+                  setInstances((prev) => Array.isArray(prev) ? prev.map((it) => it.id === selectedInstanceData.id ? { ...it, name } : it) : prev);
+                }}
+                onToggleAutoRestart={async (enabled) => {
+                  await updateInstanceMetadata(selectedInstanceData.id, { autoRestart: enabled });
+                  setInstances((prev) => Array.isArray(prev) ? prev.map((it) => it.id === selectedInstanceData.id ? { ...it, autoRestart: enabled } : it) : prev);
+                }}
+                onUpdateInstance={async (version) => {
+                  await handleUpdateInstance(selectedInstanceData.id, version);
+                }}
+                availableVersions={availableVersions}
+                latestVersion={latestVersion}
+                isUpdating={updatingInstances.has(selectedInstanceData.id)}
+              />
 
               <div className="tabs">
                 <div className="tab-content">

@@ -338,7 +338,7 @@ button.update-btn:hover:not(:disabled) {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   width: 100%;
-  max-width: 400px;
+  max-width: 640px;
   text-align: center;
   border: 1px solid var(--border-color);
 }
@@ -348,12 +348,20 @@ button.update-btn:hover:not(:disabled) {
 
 /* Responsive Design */
 .setup-prompt .setup-card {
-  max-width: 500px;
+  max-width: 720px;
   margin: 0 auto;
   background: var(--bg-secondary);
-  padding: 2rem;
+  padding: 2.5rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
+}
+
+/* Desktop: widen setup card on large screens */
+@media (min-width: 1024px) {
+  .setup-prompt .setup-card {
+    max-width: 920px;
+    padding: 3rem;
+  }
 }
 
 .player-ips {

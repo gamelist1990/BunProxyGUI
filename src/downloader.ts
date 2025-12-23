@@ -7,7 +7,7 @@ import chalk from 'chalk';
 
 const GITHUB_REPO = 'gamelist1990/BunProxy';
 const RELEASE_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
-const DEFAULT_VERSION = '0.0.5';
+const DEFAULT_VERSION = '0.0.6';
 
 // キャッシュ設定
 const CACHE_DURATION = 60 * 60 * 1000; // 1時間
@@ -298,11 +298,11 @@ export function getPlatformAssetName(platform: 'linux' | 'darwin-arm64' | 'windo
   }
 }
 
-// Known SHA256 checksums for version 0.0.5
+// Known SHA256 checksums for version 0.0.6
 export const KNOWN_SHA256: Record<string, string> = {
-  'BunProxy-0.0.5-linux': 'd434473fd65932da0681c63b32aea8dc23c9d0d76f415b2367c3b87aa9c66567',
-  'BunProxy-0.0.5-darwin-arm64': '8ad79a2b0bcc1a51d38d30bfcdaec612c5e76409108ddea0ef9bcb6762e758d4',
-  'BunProxy-0.0.5-windows.exe': '0c84d61975875b78dca9f3ed920bf9463da366a0816fa3a791b04667613be8e7',
+  'BunProxy-0.0.6-linux': 'd434473fd65932da0681c63b32aea8dc23c9d0d76f415b2367c3b87aa9c66567',
+  'BunProxy-0.0.6-darwin-arm64': '8ad79a2b0bcc1a51d38d30bfcdaec612c5e76409108ddea0ef9bcb6762e758d4',
+  'BunProxy-0.0.6-windows.exe': '0c84d61975875b78dca9f3ed920bf9463da366a0816fa3a791b04667613be8e7',
 };
 
 export function getKnownSha256(assetName: string): string | undefined {

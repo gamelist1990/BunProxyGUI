@@ -174,10 +174,16 @@ export async function updateInstance(id: string, version: string): Promise<void>
   }
 }
 
-export async function checkUpdates(): Promise<any> {
-  const res = await fetch(`${API_BASE}/updates/check`);
-  if (!res.ok) throw new Error('Failed to check updates');
-  return res.json();
+export async function updateInstanceMetadata(id: string, data: { name?: string; autoRestart?: boolean }): Promise<void> {
+  const res = await fetch(`${API_BASE}/instances/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update instance' }));
+    throw new Error(err.error || 'Failed to update instance');
+  }
 }
 
 export async function fetchLatestRelease(): Promise<Release> {
@@ -189,6 +195,12 @@ export async function fetchLatestRelease(): Promise<Release> {
 export async function fetchAllReleases(): Promise<Release[]> {
   const res = await fetch(`${API_BASE}/releases`);
   if (!res.ok) throw new Error('Failed to fetch releases');
+  return res.json();
+}
+
+export async function fetchSystemInfo(): Promise<{ platform: 'linux' | 'darwin-arm64' | 'windows'; nodePlatform: string; arch: string }> {
+  const res = await fetch(`${API_BASE}/system`);
+  if (!res.ok) throw new Error('Failed to fetch system info');
   return res.json();
 }
 
@@ -248,4 +260,38 @@ export async function changePassword(currentPassword: string, newPassword: strin
     const error = await res.json().catch(() => ({ error: 'Password change failed' }));
     throw new Error(error.error || 'Password change failed');
   }
+}
+
+// WebSocket event types
+export interface WebSocketEventMap {
+  instances: BunProxyInstance[] | { data: BunProxyInstance[] };
+  instanceAdded: void;
+  instanceRemoved: void;
+  instanceStarted: { instanceId: string; pid: number };
+  instanceStopped: { instanceId: string };
+  instanceRestarted: { instanceId: string; pid: number };
+  processExit: { instanceId: string };
+  instanceInitializing: { instanceId: string };
+  instanceInitialized: { instanceId: string };
+  updateProgress: { instanceId: string; percentage: number };
+  instanceUpdated: { instanceId: string; version: string };
+  log: { instanceId: string; timestamp: string; logType: string; message: string };
+  configUpdated: { instanceId: string; config: BunProxyConfig };
+  rateLimitError: { message: string };
+}
+
+export interface UpdateCheckResult {
+  updates: Array<{
+    instanceId: string;
+    currentVersion: string;
+    latestVersion: string;
+    hasUpdate: boolean;
+  }>;
+  latestRelease: Release;
+}
+
+export async function checkUpdates(): Promise<UpdateCheckResult> {
+  const res = await fetch(`${API_BASE}/updates/check`);
+  if (!res.ok) throw new Error('Failed to check updates');
+  return res.json();
 }

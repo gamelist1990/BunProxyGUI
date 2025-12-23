@@ -13,3 +13,4 @@ services.json
 bunproxy-gui
 bunproxy-gui-*
 bunproxy-gui.exe
+.history/

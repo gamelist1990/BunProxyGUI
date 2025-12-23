@@ -37,8 +37,8 @@ export function Login({ onLogin, isSetup = false }: LoginProps) {
     setLoading(true);
     try {
       await onLogin(username, password);
-    } catch (err: any) {
-      setError(err.message || t('loginFailed'));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('loginFailed'));
     } finally {
       setLoading(false);
     }

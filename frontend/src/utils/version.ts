@@ -1,1 +1,1 @@
-export const DEFAULT_BUNPROXY_VERSION = '0.0.5';
+export const DEFAULT_BUNPROXY_VERSION = '0.0.6';

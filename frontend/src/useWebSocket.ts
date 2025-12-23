@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import type { WebSocketEventMap } from './api';
 
 export interface WebSocketMessage {
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function useWebSocket(url: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const ws = useRef<WebSocket | null>(null);
-  const listeners = useRef<Map<string, Set<(data: any) => void>>>(new Map());
+  const listeners = useRef<Map<string, Set<(data: unknown) => void>>>(new Map());
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -33,7 +34,7 @@ export function useWebSocket(url: string) {
 
     ws.current.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
+        const message = JSON.parse(event.data) as WebSocketMessage;
         setLastMessage(message);
 
         // Notify type-specific listeners
@@ -51,18 +52,21 @@ export function useWebSocket(url: string) {
     };
   }, [url]);
 
-  const on = (type: string, callback: (data: any) => void) => {
+  const on = <K extends keyof WebSocketEventMap>(
+    type: K,
+    callback: (data: WebSocketEventMap[K]) => void
+  ) => {
     if (!listeners.current.has(type)) {
       listeners.current.set(type, new Set());
     }
-    listeners.current.get(type)!.add(callback);
+    listeners.current.get(type)!.add(callback as (data: unknown) => void);
 
     return () => {
-      listeners.current.get(type)?.delete(callback);
+      listeners.current.get(type)?.delete(callback as (data: unknown) => void);
     };
   };
 
-  const send = (message: any) => {
+  const send = (message: unknown) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify(message));
     }

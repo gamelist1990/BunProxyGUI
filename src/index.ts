@@ -22,8 +22,7 @@ import {
   getKnownSha256,
 } from './downloader.js';
 
-// Import embedded files for compiled binary
-import './embed-files.js';
+
 
 const PORT = process.env.PORT || 3000;
 const WS_PORT = process.env.WS_PORT || 3001;
@@ -46,6 +45,8 @@ const isCompiled = Bun.main.endsWith('.exe') || (!Bun.main.includes('/src/') && 
 
 //Bun compiledの場合
 if (isCompiled) {
+
+  await import('./embed-files.js');
   console.log(chalk.blue('Using embedded static files'));
   
   const staticRoutes: Record<string, Blob> = {};
@@ -142,23 +143,89 @@ processManager.on('log', (instanceId: string, type: string, message: string) => 
   });
 });
 
+// Track restart attempts to avoid tight crash loops
+const restartAttempts: Map<string, { count: number; firstAttemptAt: number }> = new Map();
+
 processManager.on('exit', async (instanceId: string, code: number, signal: string) => {
   // Check if instance still exists before updating
   const instance = serviceManager.getById(instanceId);
   if (instance) {
     await serviceManager.setPid(instanceId, undefined);
   }
+
   broadcast({
     type: 'processExit',
     instanceId,
     code,
     signal,
   });
+
   // Broadcast updated instances list
   broadcast({
     type: 'instances',
     data: serviceManager.getAll(),
   });
+
+  // Auto-restart logic
+  try {
+    if (instance && instance.autoRestart) {
+      const now = Date.now();
+      const info = restartAttempts.get(instanceId) || { count: 0, firstAttemptAt: now };
+
+      // Reset counter if first attempt was long ago
+      if (now - info.firstAttemptAt > 60_000) {
+        info.count = 0;
+        info.firstAttemptAt = now;
+      }
+
+      if (info.count >= 5) {
+        // Too many attempts in a short time, give up and notify
+        console.warn(`Auto-restart: giving up restarting ${instanceId} after ${info.count} attempts`);
+        broadcast({ type: 'autoRestartFailed', instanceId, attempts: info.count });
+        return;
+      }
+
+      info.count += 1;
+      restartAttempts.set(instanceId, info);
+
+      const backoffMs = 1000 * info.count; // 1s, 2s, 3s ...
+      console.log(`Auto-restart: will attempt to restart ${instanceId} in ${backoffMs}ms (attempt ${info.count})`);
+      setTimeout(async () => {
+        try {
+          // Re-read instance (it may have been deleted)
+          const fresh = serviceManager.getById(instanceId);
+          if (!fresh) return;
+
+          // Don't restart if user stopped it manually (PID present or running)
+          if (processManager.isRunning(instanceId)) {
+            restartAttempts.delete(instanceId);
+            return;
+          }
+
+          const pid = processManager.start(instanceId, {
+            binaryPath: fresh.binaryPath,
+            workingDirectory: fresh.dataDir,
+          });
+
+          await serviceManager.setPid(instanceId, pid);
+          configManager.watch(instanceId, fresh.configPath);
+
+          // Reset attempts on success
+          restartAttempts.delete(instanceId);
+
+          broadcast({ type: 'instanceStarted', instanceId, pid });
+          broadcast({ type: 'instances', data: serviceManager.getAll() });
+          console.log(`Auto-restart: restarted ${instanceId} (PID ${pid})`);
+        } catch (err: any) {
+          console.error(`Auto-restart: failed to restart ${instanceId}: ${err.message}`);
+          // emit a system log entry via processManager 'log' event
+          broadcast({ type: 'autoRestartError', instanceId, message: err.message });
+        }
+      }, backoffMs);
+    }
+  } catch (err: any) {
+    console.error('Auto-restart: unexpected error', err.message);
+  }
 });
 
 processManager.on('error', (instanceId: string, error: Error) => {
@@ -284,6 +351,27 @@ app.put('/api/auth/change-password', async (req, res) => {
 
     await serviceManager.setAuth(auth.username, newPassword);
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Expose system info (platform) to frontend so UI can default to the host OS
+app.get('/api/system', async (req, res) => {
+  try {
+    // Map Node's process.platform and arch to the platform identifiers used by BunProxy releases
+    let platform: 'linux' | 'darwin-arm64' | 'windows' = 'linux';
+
+    if (process.platform === 'win32') {
+      platform = 'windows';
+    } else if (process.platform === 'darwin') {
+      // Prefer darwin-arm64 when running on Apple Silicon
+      platform = process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-arm64';
+    } else {
+      platform = 'linux';
+    }
+
+    res.json({ platform, nodePlatform: process.platform, arch: process.arch });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -648,6 +736,40 @@ app.get('/api/instances/:id/player-ips', async (req, res) => {
         throw error;
       }
     }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update instance metadata (e.g., name, autoRestart)
+app.put('/api/instances/:id', async (req, res) => {
+  try {
+    const instanceId = req.params.id;
+    const instance = serviceManager.getById(instanceId);
+
+    if (!instance) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
+
+    const { name, autoRestart } = req.body as { name?: string; autoRestart?: boolean };
+
+    const updates: any = {};
+    if (typeof name === 'string') updates.name = name.trim();
+    if (typeof autoRestart === 'boolean') updates.autoRestart = autoRestart;
+
+    // If nothing to update
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    await serviceManager.update(instanceId, updates);
+
+    broadcast({ type: 'instanceUpdated', instanceId, updates });
+
+    // Broadcast updated instances list
+    broadcast({ type: 'instances', data: serviceManager.getAll() });
+
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
