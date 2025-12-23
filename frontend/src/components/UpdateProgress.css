@@ -75,7 +75,9 @@
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-  transition: width 0.3s ease;
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
   border-radius: 12px;
   position: relative;
   overflow: hidden;

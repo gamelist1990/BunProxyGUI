@@ -24,7 +24,11 @@ export function UpdateProgress({ isUpdating, progress, currentVersion, targetVer
           <div className="progress-bar">
             <div 
               className="progress-fill" 
-              style={{ width: `${progress}%` }}
+              style={{ transform: `scaleX(${Math.max(0, Math.min(100, progress)) / 100})` }}
+              aria-valuenow={progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              role="progressbar"
             />
           </div>
           <div className="progress-text">{progress}%</div>

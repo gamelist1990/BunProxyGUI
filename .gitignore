@@ -3,7 +3,6 @@ bun.lock
 bun.lockb
 package-lock.json
 dist/
-public/
 instances/
 services.json
 *.log
@@ -14,3 +13,5 @@ bunproxy-gui
 bunproxy-gui-*
 bunproxy-gui.exe
 .history/
+public/index.html
+public/assets/
