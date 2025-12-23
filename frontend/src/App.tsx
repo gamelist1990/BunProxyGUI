@@ -85,6 +85,10 @@ function App() {
 
   // Fetch host system info (platform) and set as default for new instance platform
   useEffect(() => {
+    // Wait until auth check is complete to avoid triggering 401 when auth is required and user is not authenticated
+    if (!authChecked) return;
+    if (authStatus?.requireAuth && !authStatus?.isAuthenticated) return;
+
     fetchSystemInfo()
       .then((info) => {
         if (info && info.platform) {
@@ -94,7 +98,7 @@ function App() {
       .catch(() => {
         // ignore failures, keep default
       });
-  }, []);
+  }, [authChecked, authStatus]);
 
   const checkAuth = async () => {
     try {
