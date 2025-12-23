@@ -16,7 +16,6 @@ import {
   getAllReleases,
   isGitHubRateLimited,
   downloadBinary,
-  verifySha256,
   setExecutablePermissions,
   getPlatformAssetName,
 } from './downloader.js';
@@ -47,16 +46,16 @@ if (isCompiled) {
 
   await import('./embed-files.js');
   console.log(chalk.blue('Using embedded static files'));
-  
+
   const staticRoutes: Record<string, Blob> = {};
   for (const blob of Bun.embeddedFiles) {
     // @ts-ignore - Bun.embeddedFiles contains Blobs with name property
     let name = blob.name as string;
-    
+
     if (name.startsWith('public/')) {
-      name = name.substring(7); 
+      name = name.substring(7);
     }
-    
+
     staticRoutes[`/${name}`] = blob;
 
     // Ensure common favicon paths are available for browsers that request .ico
@@ -64,28 +63,28 @@ if (isCompiled) {
       staticRoutes['/favicon.ico'] = blob;
       staticRoutes['/favicon.png'] = blob;
     }
-    
+
     if (name.startsWith('index-')) {
       staticRoutes[`/assets/${name}`] = blob;
     }
-    
+
     console.log(chalk.gray(`Embedded: /${name} (${blob.size} bytes)`));
   }
-  
+
   app.use(async (req, res, next) => {
     let requestPath = req.path;
-    
+
     // Redirect root to index.html
     if (requestPath === '/') {
       requestPath = '/index.html';
     }
-    
+
     const blob = staticRoutes[requestPath];
-    
+
     if (blob) {
       const content = await blob.arrayBuffer();
       const buffer = Buffer.from(content);
-      
+
       // Set appropriate content type
       let contentType = 'application/octet-stream';
       if (requestPath.endsWith('.html')) contentType = 'text/html';
@@ -96,7 +95,7 @@ if (isCompiled) {
       else if (requestPath.endsWith('.ico')) contentType = 'image/x-icon';
       else if (requestPath.endsWith('.png')) contentType = 'image/png';
       else if (requestPath.endsWith('.jpg') || requestPath.endsWith('.jpeg')) contentType = 'image/jpeg';
-      
+
       res.setHeader('Content-Type', contentType);
       res.send(buffer);
     } else {
@@ -447,8 +446,6 @@ app.post('/api/instances', async (req, res) => {
       });
     });
 
-    // SHA256 verification removed — skipping
-
     // Set executable permissions
     await setExecutablePermissions(binaryPath);
 
@@ -463,8 +460,7 @@ app.post('/api/instances', async (req, res) => {
       configPath,
       autoRestart: false,
       downloadSource: {
-        url: asset.downloadUrl,
-        sha256: '',
+        url: asset.downloadUrl
       },
     };
 
@@ -487,10 +483,10 @@ app.post('/api/instances', async (req, res) => {
         binaryPath: instance.binaryPath,
         workingDirectory: instance.dataDir,
       });
-      
+
       // config.ymlが生成されるまで少し待つ
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // 初期化完了後、停止
       if (processManager.isRunning(instanceId)) {
         processManager.stop(instanceId);
@@ -508,18 +504,18 @@ app.post('/api/instances', async (req, res) => {
     res.json(instance);
   } catch (error: any) {
     console.error(chalk.red(`Error creating instance: ${error.message}`));
-    
+
     if (error.message && error.message.includes('rate limit')) {
       broadcast({
         type: 'rateLimitError',
         message: 'GitHub APIのレート制限に達しました。新規インスタンスの作成と更新確認ができません。しばらく待ってから再度試してください。',
       });
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: 'GitHub APIレート制限に達しました。新規インスタンスの作成ができません。',
         rateLimited: true,
       });
     }
-    
+
     res.status(500).json({ error: error.message });
   }
 });
@@ -717,15 +713,15 @@ app.get('/api/instances/:id/player-ips', async (req, res) => {
 
     // playerIP.jsonのパスを取得
     const playerIPPath = path.join(instance.dataDir, 'playerIP.json');
-    
+
     try {
       // ファイルが存在するかチェック
       await fs.access(playerIPPath);
-      
+
       // ファイルを読み込む
       const content = await fs.readFile(playerIPPath, 'utf-8');
       const playerIPs = JSON.parse(content);
-      
+
       res.json(playerIPs);
     } catch (error: any) {
       // ファイルが存在しない、または読み込めない場合は空配列を返す
@@ -865,7 +861,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
   try {
     const instanceId = req.params.id;
     const { version } = req.body;
-    
+
     const instance = serviceManager.getById(instanceId);
     if (!instance) {
       return res.status(404).json({ error: 'Instance not found' });
@@ -945,8 +941,6 @@ app.post('/api/instances/:id/update', async (req, res) => {
       });
     });
 
-    // SHA256 verification removed — skipping
-
     // Set executable permissions
     await setExecutablePermissions(binaryPath);
 
@@ -954,8 +948,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
     instance.version = targetVersion;
     instance.binaryPath = binaryPath;
     instance.downloadSource = {
-      url: asset.downloadUrl,
-      sha256: '',
+      url: asset.downloadUrl
     };
 
     await serviceManager.update(instanceId, instance);
@@ -974,18 +967,18 @@ app.post('/api/instances/:id/update', async (req, res) => {
     res.json({ success: true, version: targetVersion });
   } catch (error: any) {
     console.error(chalk.red(`Error updating instance: ${error.message}`));
-    
+
     if (error.message && error.message.includes('rate limit')) {
       broadcast({
         type: 'rateLimitError',
         message: 'GitHub APIのレート制限に達しました。アップデートができません。しばらく待ってから再度試してください。',
       });
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: 'GitHub APIレート制限に達しました。アップデートができません。',
         rateLimited: true,
       });
     }
-    
+
     res.status(500).json({ error: error.message });
   }
 });

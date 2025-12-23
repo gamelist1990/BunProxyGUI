@@ -68,6 +68,7 @@ export const ja_JP: Translation = {
   placeholderInstanceName: 'インスタンス名',
   placeholderVersion: 'バージョン (例: 0.0.6)',
   autoRestart: '自動的に再起動',
+  autoStart: '自動起動',
   editInstanceName: 'インスタンス名を編集',
   save: '保存',
   cancel: 'キャンセル',
@@ -81,6 +82,7 @@ export const ja_JP: Translation = {
   updating: '更新中...',
   saving: '保存中...',
   autoRestartDescription: 'プロセスが停止した場合、自動的に再起動します',
+  autoStartDescription: 'システム起動時に自動的にインスタンスを起動します',
 
   // Auth
   login: 'ログイン',

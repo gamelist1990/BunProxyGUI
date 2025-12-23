@@ -11,8 +11,7 @@ export interface BunProxyInstance {
   autoRestart: boolean;
   downloadSource: {
     url: string;
-    sha256?: string;
-  };
+    };
 }
 
 export interface LogEntry {

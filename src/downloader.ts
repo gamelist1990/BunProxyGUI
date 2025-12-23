@@ -67,40 +67,12 @@ export function isGitHubRateLimited(): boolean {
   return releaseCache.isRateLimited();
 }
 
-function extractSha256FromReleaseBody(body: string, assetName: string): string | undefined {
-  if (!body) return undefined;
-
-  // SHA256ハッシュを抽出するための正規表現パターン
-  // 例: "BunProxy-0.0.5-linux: SHA256: abc123..."
-  const sha256Pattern = new RegExp(`${assetName}:\\s*SHA256:\\s*([a-f0-9]{64})`, 'i');
-  const match = body.match(sha256Pattern);
-  
-  if (match) {
-    return match[1];
-  }
-
-  // 別の形式を試す: ファイル名とSHA256の対応表
-  const lines = body.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.includes(assetName) && trimmed.match(/[a-f0-9]{64}/i)) {
-      const hashMatch = trimmed.match(/([a-f0-9]{64})/i);
-      if (hashMatch) {
-        return hashMatch[1];
-      }
-    }
-  }
-
-  console.log(chalk.yellow(`SHA256 not found for ${assetName} in release body`));
-  return undefined;
-}
 
 export interface ReleaseAsset {
   name: string;
   url: string;
   downloadUrl: string;
   size: number;
-  sha256?: string;
 }
 
 export interface Release {
@@ -147,7 +119,6 @@ export async function getLatestRelease(): Promise<Release> {
       url: asset.url,
       downloadUrl: asset.browser_download_url,
       size: asset.size,
-      sha256: extractSha256FromReleaseBody(data.body, asset.name),
     })),
   };
 
@@ -193,7 +164,6 @@ export async function getAllReleases(): Promise<Release[]> {
       url: asset.url,
       downloadUrl: asset.browser_download_url,
       size: asset.size,
-      sha256: extractSha256FromReleaseBody(release.body, asset.name),
     })),
   }));
 
@@ -226,7 +196,6 @@ export async function getReleaseByVersion(version: string): Promise<Release> {
       url: asset.url,
       downloadUrl: asset.browser_download_url,
       size: asset.size,
-      sha256: extractSha256FromReleaseBody(data.body, asset.name),
     })),
   };
 }
@@ -283,22 +252,9 @@ export async function downloadBinary(
   console.log(chalk.green(`Downloaded to ${destinationPath}`));
 }
 
-export async function calculateSha256(filePath: string): Promise<string> {
-  const hash = createHash('sha256');
-  const stream = createReadStream(filePath);
-  
-  for await (const chunk of stream) {
-    hash.update(chunk);
-  }
-  
-  return hash.digest('hex');
-}
 
-export async function verifySha256(filePath: string, expectedSha256?: string, assetName?: string): Promise<boolean> {
-  // SHA256 検証を無効化しました。要求により全てスキップします。
-  console.log(chalk.yellow('⚠ SHA256 verification disabled — skipping verification as requested'));
-  return true;
-}
+
+
 
 export async function setExecutablePermissions(filePath: string): Promise<void> {
   if (process.platform !== 'win32') {
@@ -319,8 +275,6 @@ export function getPlatformAssetName(platform: 'linux' | 'darwin-arm64' | 'windo
   }
 }
 
-// Known SHA256 checksums for version 0.0.6
-// KNOWN_SHA256 and getKnownSha256 removed per request — SHA verification is disabled
 
 export async function downloadAndVerifyBinary(
   platform: 'linux' | 'darwin-arm64' | 'windows',
@@ -342,8 +296,6 @@ export async function downloadAndVerifyBinary(
   // バイナリをダウンロード
   await downloadBinary(asset.downloadUrl, destinationPath, onProgress);
   
-  // SHA256 検証は無効化されています — スキップします
-  console.log(chalk.yellow('⚠ Skipping SHA256 verification (disabled)'));
   
   // 実行権限を設定
   await setExecutablePermissions(destinationPath);

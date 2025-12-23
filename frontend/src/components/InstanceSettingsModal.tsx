@@ -8,8 +8,11 @@ interface InstanceSettingsModalProps {
   instanceName: string;
   instanceVersion: string;
   autoRestart: boolean;
+  /** 自動起動設定（起動時に自動でインスタンスを起動する） */
+  autoStart?: boolean;
   onUpdateName: (name: string) => Promise<void>;
   onToggleAutoRestart: (enabled: boolean) => Promise<void>;
+  onToggleAutoStart?: (enabled: boolean) => Promise<void>;
   onUpdateInstance: (version: string) => Promise<void>;
   availableVersions: string[];
   latestVersion: string;
@@ -22,8 +25,11 @@ export function InstanceSettingsModal({
   instanceName,
   instanceVersion,
   autoRestart,
+  /** 自動起動の現在値 (optional) */
+  autoStart,
   onUpdateName,
   onToggleAutoRestart,
+  onToggleAutoStart,
   onUpdateInstance,
   availableVersions,
   latestVersion,
@@ -31,13 +37,15 @@ export function InstanceSettingsModal({
 }: InstanceSettingsModalProps) {
   const [nameInput, setNameInput] = useState(instanceName);
   const [autoRestartChecked, setAutoRestartChecked] = useState(autoRestart);
+  const [autoStartChecked, setAutoStartChecked] = useState(autoStart ?? false);
   const [selectedVersion, setSelectedVersion] = useState('latest');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setNameInput(instanceName);
     setAutoRestartChecked(autoRestart);
-  }, [instanceName, autoRestart, isOpen]);
+    setAutoStartChecked(autoStart ?? false);
+  }, [instanceName, autoRestart, autoStart]);
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -74,6 +82,11 @@ export function InstanceSettingsModal({
       // Update auto-restart if changed
       if (autoRestartChecked !== autoRestart) {
         await onToggleAutoRestart(autoRestartChecked);
+      }
+
+      // Update auto-start if provided and changed
+      if (typeof onToggleAutoStart === 'function' && (autoStartChecked !== (autoStart ?? false))) {
+        await onToggleAutoStart(autoStartChecked);
       }
 
       onClose();
@@ -117,6 +130,20 @@ export function InstanceSettingsModal({
               onChange={(e) => setNameInput(e.target.value)}
               placeholder={t('placeholderInstanceName') || 'インスタンス名を入力'}
             />
+          </div>
+
+          <div className="setting-section">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={autoStartChecked}
+                onChange={(e) => setAutoStartChecked(e.target.checked)}
+              />
+              <span>{t('autoStart') || '自動起動'}</span>
+            </label>
+            <small className="setting-description">
+              {t('autoStartDescription') || 'システム起動時に自動的にインスタンスを起動します'}
+            </small>
           </div>
 
           <div className="setting-section">

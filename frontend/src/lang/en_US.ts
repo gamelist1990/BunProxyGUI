@@ -66,6 +66,7 @@ export const en_US = {
   placeholderInstanceName: 'Instance name',
   placeholderVersion: 'Version (e.g., 0.0.6)',
   autoRestart: 'Auto restart on crash',
+  autoStart: 'Auto start on boot',
   editInstanceName: 'Edit instance name',
   save: 'Save',
   cancel: 'Cancel',
@@ -79,6 +80,7 @@ export const en_US = {
   updating: 'Updating...',
   saving: 'Saving...',
   autoRestartDescription: 'Automatically restart the instance if it stops unexpectedly',
+  autoStartDescription: 'Automatically start the instance when the system boots',
 
   // Auth
   login: 'Login',
