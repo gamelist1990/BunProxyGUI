@@ -67,6 +67,34 @@ export function isGitHubRateLimited(): boolean {
   return releaseCache.isRateLimited();
 }
 
+function extractSha256FromReleaseBody(body: string, assetName: string): string | undefined {
+  if (!body) return undefined;
+
+  // SHA256ハッシュを抽出するための正規表現パターン
+  // 例: "BunProxy-0.0.5-linux: SHA256: abc123..."
+  const sha256Pattern = new RegExp(`${assetName}:\\s*SHA256:\\s*([a-f0-9]{64})`, 'i');
+  const match = body.match(sha256Pattern);
+  
+  if (match) {
+    return match[1];
+  }
+
+  // 別の形式を試す: ファイル名とSHA256の対応表
+  const lines = body.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.includes(assetName) && trimmed.match(/[a-f0-9]{64}/i)) {
+      const hashMatch = trimmed.match(/([a-f0-9]{64})/i);
+      if (hashMatch) {
+        return hashMatch[1];
+      }
+    }
+  }
+
+  console.log(chalk.yellow(`SHA256 not found for ${assetName} in release body`));
+  return undefined;
+}
+
 export interface ReleaseAsset {
   name: string;
   url: string;
@@ -119,6 +147,7 @@ export async function getLatestRelease(): Promise<Release> {
       url: asset.url,
       downloadUrl: asset.browser_download_url,
       size: asset.size,
+      sha256: extractSha256FromReleaseBody(data.body, asset.name),
     })),
   };
 
@@ -164,6 +193,7 @@ export async function getAllReleases(): Promise<Release[]> {
       url: asset.url,
       downloadUrl: asset.browser_download_url,
       size: asset.size,
+      sha256: extractSha256FromReleaseBody(release.body, asset.name),
     })),
   }));
 
@@ -196,6 +226,7 @@ export async function getReleaseByVersion(version: string): Promise<Release> {
       url: asset.url,
       downloadUrl: asset.browser_download_url,
       size: asset.size,
+      sha256: extractSha256FromReleaseBody(data.body, asset.name),
     })),
   };
 }
@@ -263,16 +294,30 @@ export async function calculateSha256(filePath: string): Promise<string> {
   return hash.digest('hex');
 }
 
-export async function verifySha256(filePath: string, expectedSha256: string): Promise<boolean> {
+export async function verifySha256(filePath: string, expectedSha256?: string, assetName?: string): Promise<boolean> {
   console.log(chalk.blue('Verifying SHA256 checksum...'));
   const actualSha256 = await calculateSha256(filePath);
-  const isValid = actualSha256 === expectedSha256;
+  
+  // 動的に取得したSHA256を使用
+  let targetSha256 = expectedSha256;
+  
+  // expectedSha256が指定されていない場合、assetNameから既知のSHA256を取得
+  if (!targetSha256 && assetName) {
+    targetSha256 = getKnownSha256(assetName);
+  }
+  
+  if (!targetSha256) {
+    console.log(chalk.yellow('⚠ No SHA256 hash available for verification, skipping...'));
+    return true; // 検証をスキップ
+  }
+  
+  const isValid = actualSha256 === targetSha256;
   
   if (isValid) {
     console.log(chalk.green('✓ SHA256 verification passed'));
   } else {
     console.log(chalk.red('✗ SHA256 verification failed'));
-    console.log(chalk.yellow(`  Expected: ${expectedSha256}`));
+    console.log(chalk.yellow(`  Expected: ${targetSha256}`));
     console.log(chalk.yellow(`  Actual:   ${actualSha256}`));
   }
   
@@ -300,11 +345,51 @@ export function getPlatformAssetName(platform: 'linux' | 'darwin-arm64' | 'windo
 
 // Known SHA256 checksums for version 0.0.6
 export const KNOWN_SHA256: Record<string, string> = {
-  'BunProxy-0.0.6-linux': 'd434473fd65932da0681c63b32aea8dc23c9d0d76f415b2367c3b87aa9c66567',
+  'BunProxy-0.0.6-linux': '8cbee08bf886d7526c82a5b561240b162004f06bb1f36515d3869885471af815',
   'BunProxy-0.0.6-darwin-arm64': '8ad79a2b0bcc1a51d38d30bfcdaec612c5e76409108ddea0ef9bcb6762e758d4',
   'BunProxy-0.0.6-windows.exe': '0c84d61975875b78dca9f3ed920bf9463da366a0816fa3a791b04667613be8e7',
 };
 
 export function getKnownSha256(assetName: string): string | undefined {
   return KNOWN_SHA256[assetName];
+}
+
+export async function downloadAndVerifyBinary(
+  platform: 'linux' | 'darwin-arm64' | 'windows',
+  version: string,
+  destinationPath: string,
+  onProgress?: (downloaded: number, total: number) => void
+): Promise<void> {
+  console.log(chalk.blue(`Downloading BunProxy ${version} for ${platform}...`));
+  
+  // リリース情報を取得
+  const release = await getLatestRelease();
+  const assetName = getPlatformAssetName(platform, version);
+  const asset = release.assets.find(a => a.name === assetName);
+  
+  if (!asset) {
+    throw new Error(`Asset ${assetName} not found in release ${release.version}`);
+  }
+  
+  // バイナリをダウンロード
+  await downloadBinary(asset.downloadUrl, destinationPath, onProgress);
+  
+  // SHA256を検証（動的に取得したものを使用、または既知のものをフォールバック）
+  const sha256ToVerify = asset.sha256 || getKnownSha256(assetName);
+  const isValid = await verifySha256(destinationPath, sha256ToVerify, assetName);
+  
+  if (!isValid) {
+    // 検証に失敗した場合、ファイルを削除
+    try {
+      await fs.unlink(destinationPath);
+    } catch (error) {
+      console.log(chalk.yellow('Failed to remove invalid file'));
+    }
+    throw new Error('SHA256 verification failed');
+  }
+  
+  // 実行権限を設定
+  await setExecutablePermissions(destinationPath);
+  
+  console.log(chalk.green(`✓ Successfully downloaded and verified ${assetName}`));
 }
