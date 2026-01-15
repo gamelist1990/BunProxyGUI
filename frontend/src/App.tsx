@@ -95,7 +95,7 @@ function App() {
 
   useEffect(() => {
     checkAuth();
-  });
+  }, []);
 
   useEffect(() => {
     if (!authChecked) return;
