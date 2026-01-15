@@ -2,7 +2,7 @@ export interface BunProxyInstance {
   id: string;
   name: string;
   version: string;
-  platform: 'linux' | 'darwin-arm64' | 'windows';
+  platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows';
   binaryPath: string;
   dataDir: string;
   configPath: string;
@@ -197,7 +197,7 @@ export async function fetchAllReleases(): Promise<Release[]> {
   return res.json();
 }
 
-export async function fetchSystemInfo(): Promise<{ platform: 'linux' | 'darwin-arm64' | 'windows'; nodePlatform: string; arch: string }> {
+export async function fetchSystemInfo(): Promise<{ platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows'; nodePlatform: string; arch: string }> {
   const res = await fetch(`${API_BASE}/system`);
   if (!res.ok) throw new Error('Failed to fetch system info');
   return res.json();

@@ -73,7 +73,7 @@ function App() {
 
   const [newInstanceForm, setNewInstanceForm] = useState({
     name: "",
-    platform: "linux" as "linux" | "darwin-arm64" | "windows",
+    platform: "linux" as "linux" | "linux-arm64" | "darwin-arm64" | "windows",
     version: DEFAULT_BUNPROXY_VERSION,
   });
 
@@ -625,12 +625,14 @@ function App() {
                   ...newInstanceForm,
                   platform: e.target.value as
                     | "linux"
+                    | "linux-arm64"
                     | "darwin-arm64"
                     | "windows",
                 })
               }
             >
               <option value="linux">{t("platformLinux")}</option>
+              <option value="linux-arm64">{t("platformLinux")} (ARM64)</option>
               <option value="darwin-arm64">{t("platformMacOS")}</option>
               <option value="windows">{t("platformWindows")}</option>
             </select>

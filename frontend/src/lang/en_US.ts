@@ -64,7 +64,7 @@ export const en_US = {
 
   // Placeholders
   placeholderInstanceName: 'Instance name',
-  placeholderVersion: 'Version (e.g., 0.0.6)',
+  placeholderVersion: 'Version (e.g., 0.0.7)',
   autoRestart: 'Auto restart on crash',
   autoStart: 'Auto start on boot',
   editInstanceName: 'Edit instance name',

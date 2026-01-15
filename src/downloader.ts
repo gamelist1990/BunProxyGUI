@@ -5,7 +5,7 @@ import chalk from 'chalk';
 
 const GITHUB_REPO = 'gamelist1990/BunProxy';
 const RELEASE_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
-const DEFAULT_VERSION = '0.0.6';
+const DEFAULT_VERSION = '0.0.7';
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1時間
 
@@ -255,10 +255,12 @@ export async function setExecutablePermissions(filePath: string): Promise<void> 
   }
 }
 
-export function getPlatformAssetName(platform: 'linux' | 'darwin-arm64' | 'windows', version: string): string {
+export function getPlatformAssetName(platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows', version: string): string {
   switch (platform) {
     case 'linux':
       return `BunProxy-${version}-linux`;
+    case 'linux-arm64':
+      return `BunProxy-${version}-linux-arm64`;
     case 'darwin-arm64':
       return `BunProxy-${version}-darwin-arm64`;
     case 'windows':
@@ -268,7 +270,7 @@ export function getPlatformAssetName(platform: 'linux' | 'darwin-arm64' | 'windo
 
 
 export async function downloadAndVerifyBinary(
-  platform: 'linux' | 'darwin-arm64' | 'windows',
+  platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows',
   version: string,
   destinationPath: string,
   onProgress?: (downloaded: number, total: number) => void

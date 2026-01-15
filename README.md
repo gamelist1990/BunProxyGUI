@@ -68,6 +68,7 @@ bun run build:all
 
 **ビルドされるファイル:**
 - `bunproxy-gui-linux` - Linux x64
+- `bunproxy-gui-linux-arm64` - Linux ARM64
 - `bunproxy-gui-darwin` - macOS ARM64
 - `bunproxy-gui-windows.exe` - Windows x64
 

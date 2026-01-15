@@ -9,7 +9,7 @@ export interface BunProxyInstance {
   id: string;
   name: string;
   version: string;
-  platform: 'linux' | 'darwin-arm64' | 'windows';
+  platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows';
   binaryPath: string;
   dataDir: string;
   configPath: string;

@@ -364,15 +364,14 @@ app.put('/api/auth/change-password', async (req, res) => {
 app.get('/api/system', async (req, res) => {
   try {
     
-    let platform: 'linux' | 'darwin-arm64' | 'windows' = 'linux';
+    let platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows' = 'linux';
 
     if (process.platform === 'win32') {
       platform = 'windows';
     } else if (process.platform === 'darwin') {
-      
       platform = process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-arm64';
-    } else {
-      platform = 'linux';
+    } else if (process.platform === 'linux') {
+      platform = process.arch === 'arm64' ? 'linux-arm64' : 'linux';
     }
 
     res.json({ platform, nodePlatform: process.platform, arch: process.arch });
