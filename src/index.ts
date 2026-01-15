@@ -19,6 +19,7 @@ import {
   setExecutablePermissions,
   getPlatformAssetName,
 } from './downloader.js';
+import os from 'os';
 
 
 
@@ -32,6 +33,40 @@ const serviceManager = new ServiceManager();
 const processManager = new ProcessManager();
 const configManager = new ConfigManager();
 const authManager = new AuthManager(serviceManager);
+
+// Helper: return first non-internal IPv4 address or 127.0.0.1
+function getLocalIPAddress(): string {
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    const nets = ifaces[name] as (os.NetworkInterfaceInfo | os.NetworkInterfaceInfo[] | undefined) as any;
+    if (!nets) continue;
+    for (const net of Array.isArray(nets) ? nets : [nets]) {
+      if (net && net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+// Replace 'localhost'/loopback in listener.target.host with local IP
+function replaceLocalHostsInConfig(config: any, instanceId?: string): void {
+  if (!config || !Array.isArray(config.listeners)) return;
+  const localIp = getLocalIPAddress();
+  let converted = false;
+  for (const listener of config.listeners) {
+    if (listener && listener.target && typeof listener.target.host === 'string') {
+      const host = listener.target.host.trim().toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+        listener.target.host = localIp;
+        converted = true;
+      }
+    }
+  }
+  if (converted) {
+    console.log(chalk.blue(`Converted localhost -> ${localIp} in config${instanceId ? ` for ${instanceId}` : ''}`));
+  }
+}
 
 app.use(express.json());
 app.use(cookieParser());
@@ -780,7 +815,9 @@ app.put('/api/instances/:id/config', async (req, res) => {
 
     const config = req.body;
 
-    
+    // Convert localhost/loopback targets to the host's LAN IP to avoid loopback-only bindings
+    replaceLocalHostsInConfig(config, instanceId);
+
     const validation = await configManager.validate(config);
     if (!validation.valid) {
       return res.status(400).json({ errors: validation.errors });
