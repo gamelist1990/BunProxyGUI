@@ -68,6 +68,100 @@ function replaceLocalHostsInConfig(config: any, instanceId?: string): void {
   }
 }
 
+// Find a local listening service (prefer TCP over UDP) and return { protocol, address, port }
+async function findLocalListeningService(): Promise<{ protocol: 'tcp' | 'udp'; address: string; port: number } | null> {
+  const { exec } = await import('child_process');
+  const execPromise = (cmd: string) => new Promise<string>((resolve, reject) => {
+    exec(cmd, { timeout: 5000 }, (err, stdout, stderr) => {
+      if (err) return reject(err);
+      resolve(stdout.toString());
+    });
+  });
+
+  let output = '';
+  try {
+    // Try ss first (Linux)
+    try {
+      output = await execPromise('ss -ltnu');
+    } catch (e) {
+      // fallback to netstat
+      output = await execPromise(process.platform === 'win32' ? 'netstat -ano' : 'netstat -an');
+    }
+  } catch (err) {
+    console.warn(chalk.yellow('Could not run netstat/ss to discover local services:', (err as Error).message));
+    return null;
+  }
+
+  const lines = output.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  interface Entry { protocol: 'tcp'|'udp'; address: string; port: number; state?: string }
+  const entries: Entry[] = [];
+
+  for (const line of lines) {
+    // Look for tcp LISTEN lines
+    // Examples (Linux ss): "LISTEN 0      128        0.0.0.0:22       0.0.0.0:*"
+    // Windows netstat: "TCP    0.0.0.0:80           0.0.0.0:0              LISTENING"
+    const tcpMatch = line.match(/^(?:TCP|tcp)\s+.+?([0-9.:]+):(\d+).*?(LISTEN|LISTENING)?$/i);
+    if (tcpMatch) {
+      const address = tcpMatch[1];
+      const port = parseInt(tcpMatch[2], 10);
+      const state = tcpMatch[3] ? tcpMatch[3].toUpperCase() : '';
+      if (state === 'LISTEN' || state === 'LISTENING' || process.platform !== 'win32') {
+        entries.push({ protocol: 'tcp', address, port, state });
+        continue;
+      }
+    }
+
+    // UDP entries
+    const udpMatch = line.match(/^(?:UDP|udp)\s+([0-9.:]+):(\d+)$/i) || line.match(/^(?:UDP|udp)\s+.+?([0-9.:]+):(\d+)/i);
+    if (udpMatch) {
+      const address = udpMatch[1];
+      const port = parseInt(udpMatch[2], 10);
+      entries.push({ protocol: 'udp', address, port });
+    }
+  }
+
+  if (entries.length === 0) return null;
+
+  // Prefer TCP non-loopback, then TCP loopback, then UDP non-loopback, then UDP loopback
+  const prefer = (p: 'tcp'|'udp', skipLoopback: boolean) => entries.find(e => e.protocol === p && (!skipLoopback || !/^127\.|^::1$/.test(e.address) && e.address !== '::'));
+
+  let found = prefer('tcp', true) || prefer('tcp', false) || prefer('udp', true) || prefer('udp', false);
+
+  if (!found) return null;
+
+  return { protocol: found.protocol, address: found.address, port: found.port };
+}
+
+// Apply 'auto' target scanning: if listener.target.host === 'auto', detect a local service and populate host and tcp/udp
+async function applyAutoTargetsInConfig(config: any, instanceId?: string): Promise<void> {
+  if (!config || !Array.isArray(config.listeners)) return;
+
+  for (const listener of config.listeners) {
+    if (listener && listener.target && typeof listener.target.host === 'string') {
+      const hostVal = listener.target.host.trim().toLowerCase();
+      if (hostVal === 'auto') {
+        const found = await findLocalListeningService();
+        if (found) {
+          // Translate address of 0.0.0.0 to local IP
+          const host = (found.address === '0.0.0.0' || found.address === '::') ? getLocalIPAddress() : found.address;
+          listener.target.host = host;
+          if (found.protocol === 'tcp') {
+            listener.target.tcp = found.port;
+            delete listener.target.udp;
+          } else {
+            listener.target.udp = found.port;
+            delete listener.target.tcp;
+          }
+          console.log(chalk.blue(`Auto-mapped target ${found.protocol.toUpperCase()} ${host}:${found.port} for ${instanceId ?? 'config'}`));
+        } else {
+          console.log(chalk.yellow(`No local listening service found for auto target${instanceId ? ` for ${instanceId}` : ''}`));
+        }
+      }
+    }
+  }
+}
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(authManager.authMiddleware());
@@ -818,6 +912,9 @@ app.put('/api/instances/:id/config', async (req, res) => {
 
     // Convert localhost/loopback targets to the host's LAN IP to avoid loopback-only bindings
     replaceLocalHostsInConfig(config, instanceId);
+
+    // Apply 'auto' targets: detect local listening services and populate host/port
+    await applyAutoTargetsInConfig(config, instanceId);
 
     const validation = await configManager.validate(config);
     if (!validation.valid) {
