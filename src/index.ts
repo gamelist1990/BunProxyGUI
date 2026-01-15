@@ -709,7 +709,8 @@ app.post('/api/instances/:id/restart', async (req, res) => {
 app.get('/api/instances/:id/logs', async (req, res) => {
   try {
     const instanceId = req.params.id;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+    let limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+    if (isNaN(limit) || limit < 1) limit = 100;
     const logs = processManager.getLogs(instanceId, limit);
     res.json(logs);
   } catch (error: any) {

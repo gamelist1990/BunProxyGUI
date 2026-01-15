@@ -39,6 +39,7 @@ import { InstanceSettingsModal } from "./components/InstanceSettingsModal";
 import { formatLogMessage } from "./utils/ansi";
 import { DEFAULT_BUNPROXY_VERSION } from "./utils/version";
 import type { WebSocketEventMap, UpdateCheckResult } from "./api";
+import { LOG_DISPLAY_LIMIT } from "./utils/constants";
 
 function App() {
   const [instances, setInstances] = useState<BunProxyInstance[]>([]);
@@ -78,6 +79,7 @@ function App() {
   });
 
   const { isConnected, on } = useWebSocket("ws://localhost:3000");
+
 
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
@@ -252,14 +254,21 @@ function App() {
       }),
       on("log", (data: WebSocketEventMap["log"]) => {
         if (data.instanceId === selectedInstance) {
-          setLogs((prev) => [
-            ...prev,
-            {
-              timestamp: data.timestamp,
-              type: data.logType as "stdout" | "stderr" | "system",
-              message: data.message,
-            },
-          ]);
+          setLogs((prev) => {
+            const next = [
+              ...prev,
+              {
+                timestamp: data.timestamp,
+                type: data.logType as "stdout" | "stderr" | "system",
+                message: data.message,
+              },
+            ];
+            // Keep only the last N entries to avoid unbounded memory growth
+            if (next.length > LOG_DISPLAY_LIMIT) {
+              return next.slice(next.length - LOG_DISPLAY_LIMIT);
+            }
+            return next;
+          });
         }
       }),
       on("configUpdated", (data: WebSocketEventMap["configUpdated"]) => {
@@ -310,7 +319,7 @@ function App() {
 
   async function loadLogs(instanceId: string) {
     try {
-      const data = await fetchLogs(instanceId, 100);
+      const data = await fetchLogs(instanceId, LOG_DISPLAY_LIMIT);
       setLogs(data);
     } catch (error) {
       console.error(t("errorLoadLogs"), error);
