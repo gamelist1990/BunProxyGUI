@@ -258,7 +258,7 @@ export async function setExecutablePermissions(filePath: string): Promise<void> 
 export function getPlatformAssetName(platform: 'linux' | 'linux-arm64' | 'darwin-arm64' | 'windows', version: string): string {
   switch (platform) {
     case 'linux':
-      return `BunProxy-${version}-linux`;
+      return `BunProxy-${version}-linux-x64`;
     case 'linux-arm64':
       return `BunProxy-${version}-linux-arm64`;
     case 'darwin-arm64':
