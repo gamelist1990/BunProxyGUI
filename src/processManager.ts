@@ -41,7 +41,7 @@ export class ProcessManager extends EventEmitter {
       : (options.args || []);
 
     if (shouldUseSudo) {
-      console.log(chalk.yellow('  Running with sudo (privileged port detected)'));
+      console.log(chalk.yellow('  Running with sudo (Unix platform policy)'));
     }
 
     const child = spawn(command, commandArgs, {

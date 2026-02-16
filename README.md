@@ -117,11 +117,11 @@ PORT=4000 bun run start
 
 環境変数でポートを変更できます。
 
-### Linux/macOSで1024未満のポートを使いたい
+### Linux/macOSではBunProxyをsudoで起動
 
-Linux/macOSでは `1-1023` のポートをバインドするには管理者権限が必要です。
+Linux/macOSでは、BunProxyの起動時に常に `sudo` 経由で起動します。
 
-このアプリは、`config.yml` の `endpoint` / `listeners[].tcp` / `listeners[].udp` に低ポートが設定されている場合、BunProxy起動時に自動で `sudo` 経由で起動します。
+そのため、`1-1023` の低ポート利用にも対応できます。
 
 ただし、GUIからの起動は**非対話**のため sudo パスワード入力プロンプトは表示できません。必要に応じて以下のいずれかを行ってください。
 

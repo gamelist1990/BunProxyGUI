@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import chalk from 'chalk';
 import { ServiceManager, BunProxyInstance } from './services.js';
 import { ProcessManager } from './processManager.js';
-import { ConfigManager, BunProxyConfig } from './configManager.js';
+import { ConfigManager } from './configManager.js';
 import { AuthManager } from './authManager.js';
 import {
   getLatestRelease,
@@ -137,29 +137,8 @@ function broadcast(message: any) {
   });
 }
 
-function isPrivilegedPort(port?: number): boolean {
-  return typeof port === 'number' && port > 0 && port < 1024;
-}
-
-function hasPrivilegedBindingPort(config: BunProxyConfig): boolean {
-  if (isPrivilegedPort(config.endpoint)) {
-    return true;
-  }
-
-  if (!Array.isArray(config.listeners)) {
-    return false;
-  }
-
-  return config.listeners.some((listener) => isPrivilegedPort(listener.tcp) || isPrivilegedPort(listener.udp));
-}
-
-async function shouldStartWithSudo(instance: BunProxyInstance): Promise<boolean> {
-  if (process.platform !== 'linux' && process.platform !== 'darwin') {
-    return false;
-  }
-
-  const config = await configManager.read(instance.configPath);
-  return hasPrivilegedBindingPort(config);
+async function shouldStartWithSudo(_instance: BunProxyInstance): Promise<boolean> {
+  return process.platform === 'linux' || process.platform === 'darwin';
 }
 
 
