@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import chalk from 'chalk';
 import { ServiceManager, BunProxyInstance } from './services.js';
 import { ProcessManager } from './processManager.js';
-import { ConfigManager } from './configManager.js';
+import { ConfigManager, BunProxyConfig } from './configManager.js';
 import { AuthManager } from './authManager.js';
 import {
   getLatestRelease,
@@ -137,6 +137,31 @@ function broadcast(message: any) {
   });
 }
 
+function isPrivilegedPort(port?: number): boolean {
+  return typeof port === 'number' && port > 0 && port < 1024;
+}
+
+function hasPrivilegedBindingPort(config: BunProxyConfig): boolean {
+  if (isPrivilegedPort(config.endpoint)) {
+    return true;
+  }
+
+  if (!Array.isArray(config.listeners)) {
+    return false;
+  }
+
+  return config.listeners.some((listener) => isPrivilegedPort(listener.tcp) || isPrivilegedPort(listener.udp));
+}
+
+async function shouldStartWithSudo(instance: BunProxyInstance): Promise<boolean> {
+  if (process.platform !== 'linux' && process.platform !== 'darwin') {
+    return false;
+  }
+
+  const config = await configManager.read(instance.configPath);
+  return hasPrivilegedBindingPort(config);
+}
+
 
 processManager.on('log', (instanceId: string, type: string, message: string) => {
   broadcast({
@@ -207,9 +232,12 @@ processManager.on('exit', async (instanceId: string, code: number, signal: strin
             return;
           }
 
+          const useSudo = await shouldStartWithSudo(fresh);
+
           const pid = processManager.start(instanceId, {
             binaryPath: fresh.binaryPath,
             workingDirectory: fresh.dataDir,
+            useSudo,
           });
 
           await serviceManager.setPid(instanceId, pid);
@@ -478,9 +506,12 @@ app.post('/api/instances', async (req, res) => {
     });
 
     try {
+      const useSudo = await shouldStartWithSudo(instance);
+
       const pid = processManager.start(instanceId, {
         binaryPath: instance.binaryPath,
         workingDirectory: instance.dataDir,
+        useSudo,
       });
 
       
@@ -573,9 +604,12 @@ app.post('/api/instances/:id/start', async (req, res) => {
       return res.status(400).json({ error: 'Instance is already running' });
     }
 
+    const useSudo = await shouldStartWithSudo(instance);
+
     const pid = processManager.start(instanceId, {
       binaryPath: instance.binaryPath,
       workingDirectory: instance.dataDir,
+      useSudo,
     });
 
     await serviceManager.setPid(instanceId, pid);
@@ -646,9 +680,12 @@ app.post('/api/instances/:id/restart', async (req, res) => {
       return res.status(404).json({ error: 'Instance not found' });
     }
 
+    const useSudo = await shouldStartWithSudo(instance);
+
     const pid = await processManager.restart(instanceId, {
       binaryPath: instance.binaryPath,
       workingDirectory: instance.dataDir,
+      useSudo,
     });
 
     await serviceManager.setPid(instanceId, pid);
@@ -1018,9 +1055,11 @@ async function init() {
           }
 
           console.log(chalk.blue(`Auto-starting instance ${instance.name} (${instance.id})`));
+          const useSudo = await shouldStartWithSudo(instance);
           const pid = processManager.start(instance.id, {
             binaryPath: instance.binaryPath,
             workingDirectory: instance.dataDir,
+            useSudo,
           });
 
           await serviceManager.setPid(instance.id, pid);

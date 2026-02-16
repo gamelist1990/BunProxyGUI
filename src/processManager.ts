@@ -7,6 +7,7 @@ export interface ProcessOptions {
   binaryPath: string;
   args?: string[];
   env?: Record<string, string>;
+  useSudo?: boolean;
 }
 
 export interface LogEntry {
@@ -33,7 +34,17 @@ export class ProcessManager extends EventEmitter {
     console.log(chalk.gray(`  Binary: ${options.binaryPath}`));
     console.log(chalk.gray(`  Working Directory: ${options.workingDirectory}`));
 
-    const child = spawn(options.binaryPath, options.args || [], {
+    const shouldUseSudo = !!options.useSudo && process.platform !== 'win32';
+    const command = shouldUseSudo ? 'sudo' : options.binaryPath;
+    const commandArgs = shouldUseSudo
+      ? ['-n', options.binaryPath, ...(options.args || [])]
+      : (options.args || []);
+
+    if (shouldUseSudo) {
+      console.log(chalk.yellow('  Running with sudo (privileged port detected)'));
+    }
+
+    const child = spawn(command, commandArgs, {
       cwd: options.workingDirectory,
       env: { ...process.env, ...options.env },
       stdio: ['ignore', 'pipe', 'pipe'],
