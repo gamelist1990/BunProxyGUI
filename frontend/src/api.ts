@@ -31,6 +31,11 @@ export interface ListenerConfig {
     tcp?: number;
     udp?: number;
   };
+  targets?: Array<{
+    host?: string;
+    tcp?: number;
+    udp?: number;
+  }>;
 }
 
 export interface BunProxyConfig {

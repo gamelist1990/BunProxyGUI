@@ -19,6 +19,11 @@ export interface BunProxyConfig {
       tcp?: number;
       udp?: number;
     };
+    targets?: Array<{
+      host?: string;
+      tcp?: number;
+      udp?: number;
+    }>;
   }>;
 }
 
@@ -50,6 +55,24 @@ export class ConfigManager extends EventEmitter {
 
   async validate(config: BunProxyConfig): Promise<{ valid: boolean; errors: string[] }> {
     const errors: string[] = [];
+    const validateTargetPorts = (
+      target: { tcp?: number; udp?: number } | undefined,
+      path: string
+    ) => {
+      if (!target) {
+        return;
+      }
+      if (target.tcp !== undefined) {
+        if (typeof target.tcp !== 'number' || target.tcp < 1 || target.tcp > 65535) {
+          errors.push(`${path}.tcp must be a valid port number`);
+        }
+      }
+      if (target.udp !== undefined) {
+        if (typeof target.udp !== 'number' || target.udp < 1 || target.udp > 65535) {
+          errors.push(`${path}.udp must be a valid port number`);
+        }
+      }
+    };
 
     if (config.endpoint !== undefined) {
       if (typeof config.endpoint !== 'number' || config.endpoint < 1 || config.endpoint > 65535) {
@@ -73,15 +96,15 @@ export class ConfigManager extends EventEmitter {
             }
           }
           if (listener.target) {
-            if (listener.target.tcp !== undefined) {
-              if (typeof listener.target.tcp !== 'number' || listener.target.tcp < 1 || listener.target.tcp > 65535) {
-                errors.push(`listeners[${index}].target.tcp must be a valid port number`);
-              }
-            }
-            if (listener.target.udp !== undefined) {
-              if (typeof listener.target.udp !== 'number' || listener.target.udp < 1 || listener.target.udp > 65535) {
-                errors.push(`listeners[${index}].target.udp must be a valid port number`);
-              }
+            validateTargetPorts(listener.target, `listeners[${index}].target`);
+          }
+          if (listener.targets !== undefined) {
+            if (!Array.isArray(listener.targets)) {
+              errors.push(`listeners[${index}].targets must be an array`);
+            } else {
+              listener.targets.forEach((target, targetIndex) => {
+                validateTargetPorts(target, `listeners[${index}].targets[${targetIndex}]`);
+              });
             }
           }
         });
