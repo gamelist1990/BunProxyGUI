@@ -875,7 +875,7 @@ app.get('/api/rate-limit-status', async (req, res) => {
 app.post('/api/instances/:id/update', async (req, res) => {
   try {
     const instanceId = req.params.id;
-    const { version } = req.body;
+    const { version, forceReinstall } = req.body;
 
     const instance = serviceManager.getById(instanceId);
     if (!instance) {
@@ -920,7 +920,7 @@ app.post('/api/instances/:id/update', async (req, res) => {
     }
 
     
-    if (instance.version === targetVersion) {
+    if (instance.version === targetVersion && !forceReinstall) {
       return res.status(400).json({ error: 'Instance is already on this version' });
     }
 

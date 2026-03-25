@@ -64,7 +64,7 @@ export const en_US = {
 
   // Placeholders
   placeholderInstanceName: 'Instance name',
-  placeholderVersion: 'Version (e.g., 0.0.7)',
+  placeholderVersion: 'Version (e.g., 0.0.9)',
   autoRestart: 'Auto restart on crash',
   autoStart: 'Auto start on boot',
   editInstanceName: 'Edit instance name',
@@ -77,6 +77,7 @@ export const en_US = {
   updateVersion: 'Update Version',
   currentVersion: 'Current Version',
   updateNow: 'Update Now',
+  reinstallNow: 'Reinstall Now',
   updating: 'Updating...',
   saving: 'Saving...',
   autoRestartDescription: 'Automatically restart the instance if it stops unexpectedly',

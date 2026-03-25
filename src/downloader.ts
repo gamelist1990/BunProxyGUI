@@ -5,7 +5,7 @@ import chalk from 'chalk';
 
 const GITHUB_REPO = 'gamelist1990/BunProxy';
 const RELEASE_API_BASE = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
-const DEFAULT_VERSION = '0.0.7';
+const DEFAULT_VERSION = '0.0.9';
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1時間
 

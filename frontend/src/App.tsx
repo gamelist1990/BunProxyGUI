@@ -463,13 +463,9 @@ function App() {
 
   async function handleUpdateInstance(
     instanceId: string,
-    version: string = "latest"
+    version: string = "latest",
+    forceReinstall: boolean = false
   ) {
-    if (
-      !confirm(`インスタンスをバージョン ${version} にアップデートしますか？`)
-    )
-      return;
-
     try {
       setUpdatingInstances((prev) => {
         const next = new Map(prev);
@@ -477,7 +473,7 @@ function App() {
         return next;
       });
 
-      await updateInstance(instanceId, version);
+      await updateInstance(instanceId, version, forceReinstall);
     } catch (error) {
       setUpdatingInstances((prev) => {
         const next = new Map(prev);
@@ -766,8 +762,12 @@ function App() {
                       : prev
                   );
                 }}
-                onUpdateInstance={async (version) => {
-                  await handleUpdateInstance(selectedInstanceData.id, version);
+                onUpdateInstance={async (version, forceReinstall) => {
+                  await handleUpdateInstance(
+                    selectedInstanceData.id,
+                    version,
+                    !!forceReinstall
+                  );
                 }}
                 availableVersions={availableVersions}
                 latestVersion={latestVersion}
