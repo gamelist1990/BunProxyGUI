@@ -733,6 +733,7 @@ function App() {
                 onClose={() => setSettingsModalOpen(false)}
                 instanceName={selectedInstanceData.name}
                 instanceVersion={selectedInstanceData.version}
+                autoStart={!!selectedInstanceData.autoStart}
                 autoRestart={!!selectedInstanceData.autoRestart}
                 onUpdateName={async (name) => {
                   await updateInstanceMetadata(selectedInstanceData.id, {
@@ -743,6 +744,20 @@ function App() {
                       ? prev.map((it) =>
                           it.id === selectedInstanceData.id
                             ? { ...it, name }
+                            : it
+                        )
+                      : prev
+                  );
+                }}
+                onToggleAutoStart={async (enabled) => {
+                  await updateInstanceMetadata(selectedInstanceData.id, {
+                    autoStart: enabled,
+                  });
+                  setInstances((prev) =>
+                    Array.isArray(prev)
+                      ? prev.map((it) =>
+                          it.id === selectedInstanceData.id
+                            ? { ...it, autoStart: enabled }
                             : it
                         )
                       : prev

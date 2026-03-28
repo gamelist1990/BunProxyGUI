@@ -8,6 +8,7 @@ export interface BunProxyInstance {
   configPath: string;
   pid?: number;
   lastStarted?: string;
+  autoStart: boolean;
   autoRestart: boolean;
   downloadSource: {
     url: string;
@@ -178,7 +179,10 @@ export async function updateInstance(id: string, version: string, forceReinstall
   }
 }
 
-export async function updateInstanceMetadata(id: string, data: { name?: string; autoRestart?: boolean }): Promise<void> {
+export async function updateInstanceMetadata(
+  id: string,
+  data: { name?: string; autoStart?: boolean; autoRestart?: boolean }
+): Promise<void> {
   const res = await fetch(`${API_BASE}/instances/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

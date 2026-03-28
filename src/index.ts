@@ -42,9 +42,9 @@ const isCompiled = Bun.main.endsWith('.exe') || (!Bun.main.includes('/src/') && 
 
 if (isCompiled) {
 
-  //@ts-expect-error
-    // 開発環境では使わんので無視する
-  await import('./embed-files.js');
+  // 開発環境では使わんので無視する
+  // @ts-ignore Bun compile-time embedded files module
+  await import('./embed-files.ts');
   console.log(chalk.blue('Using embedded static files'));
 
   const staticRoutes: Record<string, Blob> = {};
@@ -464,6 +464,7 @@ app.post('/api/instances', async (req, res) => {
       binaryPath,
       dataDir: instanceDir, 
       configPath,
+      autoStart: false,
       autoRestart: false,
       downloadSource: {
         url: asset.downloadUrl
@@ -762,10 +763,15 @@ app.put('/api/instances/:id', async (req, res) => {
       return res.status(404).json({ error: 'Instance not found' });
     }
 
-    const { name, autoRestart } = req.body as { name?: string; autoRestart?: boolean };
+    const { name, autoStart, autoRestart } = req.body as {
+      name?: string;
+      autoStart?: boolean;
+      autoRestart?: boolean;
+    };
 
     const updates: any = {};
     if (typeof name === 'string') updates.name = name.trim();
+    if (typeof autoStart === 'boolean') updates.autoStart = autoStart;
     if (typeof autoRestart === 'boolean') updates.autoRestart = autoRestart;
 
     
@@ -1024,7 +1030,7 @@ async function init() {
     
     for (const instance of instances) {
       try {
-        if (instance.autoRestart && !processManager.isRunning(instance.id)) {
+        if (instance.autoStart && !processManager.isRunning(instance.id)) {
           
           try {
             await fs.access(instance.binaryPath);

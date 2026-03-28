@@ -15,6 +15,7 @@ export interface BunProxyInstance {
   configPath: string;
   pid?: number;
   lastStarted?: string;
+  autoStart: boolean;
   autoRestart: boolean;
   downloadSource: {
     url: string;
@@ -43,6 +44,11 @@ export class ServiceManager {
     try {
       const content = await fs.readFile(this.servicesPath, 'utf-8');
       this.data = JSON.parse(content);
+      this.data.instances = (this.data.instances || []).map((instance) => ({
+        ...instance,
+        autoStart: instance.autoStart ?? false,
+        autoRestart: instance.autoRestart ?? false,
+      }));
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         
