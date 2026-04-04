@@ -5,11 +5,12 @@ import type { ListenerConfig } from '../../api';
 import { t } from '../../lang';
 
 interface ListenerListProps {
+  instanceId: string;
   listeners: ListenerConfig[];
   onChange: (listeners: ListenerConfig[]) => void;
 }
 
-export const ListenerList: React.FC<ListenerListProps> = ({ listeners, onChange }) => {
+export const ListenerList: React.FC<ListenerListProps> = ({ instanceId, listeners, onChange }) => {
   const handleListenerChange = (index: number, field: string, value: any) => {
     const newListeners = [...listeners];
     newListeners[index] = { ...newListeners[index], [field]: value };
@@ -32,6 +33,13 @@ export const ListenerList: React.FC<ListenerListProps> = ({ listeners, onChange 
       tcp: 25565,
       udp: 25565,
       haproxy: false,
+      https: {
+        enabled: false,
+        autoDetect: true,
+        letsEncryptDomain: 'pexserver.mooo.com',
+        certPath: '',
+        keyPath: '',
+      },
       webhook: '',
       target: {
         host: 'localhost',
@@ -68,6 +76,7 @@ export const ListenerList: React.FC<ListenerListProps> = ({ listeners, onChange 
         listeners.map((listener, index) => (
           <ListenerItem
             key={index}
+            instanceId={instanceId}
             index={index}
             listener={listener}
             onChange={(field, value) => handleListenerChange(index, field, value)}

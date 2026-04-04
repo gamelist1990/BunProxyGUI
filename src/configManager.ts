@@ -13,6 +13,13 @@ export interface BunProxyConfig {
     tcp?: number;
     udp?: number;
     haproxy?: boolean;
+    https?: {
+      enabled?: boolean;
+      autoDetect?: boolean;
+      letsEncryptDomain?: string;
+      certPath?: string;
+      keyPath?: string;
+    };
     webhook?: string;
     target?: {
       host?: string;
@@ -70,6 +77,21 @@ export class ConfigManager extends EventEmitter {
           if (listener.udp !== undefined) {
             if (typeof listener.udp !== 'number' || listener.udp < 1 || listener.udp > 65535) {
               errors.push(`listeners[${index}].udp must be a valid port number`);
+            }
+          }
+          if (listener.https !== undefined) {
+            if (typeof listener.https !== 'object' || listener.https === null) {
+              errors.push(`listeners[${index}].https must be an object`);
+            } else {
+              if (listener.https.letsEncryptDomain !== undefined && typeof listener.https.letsEncryptDomain !== 'string') {
+                errors.push(`listeners[${index}].https.letsEncryptDomain must be a string`);
+              }
+              if (listener.https.certPath !== undefined && typeof listener.https.certPath !== 'string') {
+                errors.push(`listeners[${index}].https.certPath must be a string`);
+              }
+              if (listener.https.keyPath !== undefined && typeof listener.https.keyPath !== 'string') {
+                errors.push(`listeners[${index}].https.keyPath must be a string`);
+              }
             }
           }
           if (listener.target) {

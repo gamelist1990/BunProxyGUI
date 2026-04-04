@@ -7,12 +7,13 @@ import { Button } from './ui/Button';
 import './ConfigEditor.css';
 
 interface ConfigEditorProps {
+  instanceId: string;
   config: BunProxyConfig;
   onChange: (config: BunProxyConfig) => void;
   onSave: () => void;
 }
 
-export function ConfigEditor({ config, onChange, onSave }: ConfigEditorProps) {
+export function ConfigEditor({ instanceId, config, onChange, onSave }: ConfigEditorProps) {
   const [localConfig, setLocalConfig] = useState<BunProxyConfig>(config);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -32,6 +33,7 @@ export function ConfigEditor({ config, onChange, onSave }: ConfigEditorProps) {
         <>
           <GeneralSettings config={localConfig} onChange={handleChange} />
           <ListenerList
+            instanceId={instanceId}
             listeners={localConfig.listeners || []}
             onChange={(listeners) => handleChange('listeners', listeners)}
           />

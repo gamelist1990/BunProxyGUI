@@ -808,6 +808,7 @@ function App() {
                     <h3>{t("configuration")}</h3>
                     {config && (
                       <ConfigEditor
+                        instanceId={selectedInstanceData.id}
                         config={config}
                         onChange={setConfig}
                         onSave={handleSaveConfig}

@@ -25,6 +25,13 @@ export interface ListenerConfig {
   tcp?: number;
   udp?: number;
   haproxy?: boolean;
+  https?: {
+    enabled?: boolean;
+    autoDetect?: boolean;
+    letsEncryptDomain?: string;
+    certPath?: string;
+    keyPath?: string;
+  };
   webhook?: string;
   target?: {
     host?: string;
@@ -153,6 +160,23 @@ export async function updateConfig(id: string, config: BunProxyConfig): Promise<
     const error = await res.json();
     throw new Error(error.errors?.join(', ') || 'Failed to update config');
   }
+}
+
+export async function uploadListenerTlsAssets(
+  id: string,
+  listenerIndex: number,
+  payload: { certPem: string; keyPem: string }
+): Promise<{ certPath: string; keyPath: string }> {
+  const res = await fetch(`${API_BASE}/instances/${id}/listeners/${listenerIndex}/tls-assets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to upload TLS assets' }));
+    throw new Error(error.error || 'Failed to upload TLS assets');
+  }
+  return res.json();
 }
 
 export async function fetchPlayerIPs(id: string): Promise<PlayerIPEntry[]> {

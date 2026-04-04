@@ -34,7 +34,7 @@ const configManager = new ConfigManager();
 const authManager = new AuthManager(serviceManager);
 
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 app.use(authManager.authMiddleware());
 
@@ -812,6 +812,46 @@ app.put('/api/instances/:id/config', async (req, res) => {
     });
 
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/instances/:id/listeners/:index/tls-assets', async (req, res) => {
+  try {
+    const instanceId = req.params.id;
+    const listenerIndex = parseInt(req.params.index, 10);
+    const instance = serviceManager.getById(instanceId);
+
+    if (!instance) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
+    if (!Number.isInteger(listenerIndex) || listenerIndex < 0) {
+      return res.status(400).json({ error: 'Invalid listener index' });
+    }
+
+    const { certPem, keyPem } = req.body as { certPem?: string; keyPem?: string };
+    if (typeof certPem !== 'string' || certPem.trim() === '') {
+      return res.status(400).json({ error: 'certPem is required' });
+    }
+    if (typeof keyPem !== 'string' || keyPem.trim() === '') {
+      return res.status(400).json({ error: 'keyPem is required' });
+    }
+
+    const tlsDir = path.join(instance.dataDir, 'certs', `listener-${listenerIndex + 1}`);
+    await fs.mkdir(tlsDir, { recursive: true });
+
+    const certPath = path.join(tlsDir, 'fullchain.pem');
+    const keyPath = path.join(tlsDir, 'privkey.pem');
+
+    await fs.writeFile(certPath, certPem, 'utf-8');
+    await fs.writeFile(keyPath, keyPem, 'utf-8');
+
+    res.json({
+      success: true,
+      certPath,
+      keyPath,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

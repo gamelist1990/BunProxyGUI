@@ -6,6 +6,12 @@ listeners:
     tcp: 25565
     udp: 25565
     haproxy: true
+    https:
+      enabled: false
+      autoDetect: true
+      letsEncryptDomain: pexserver.mooo.com
+      certPath: /etc/letsencrypt/live/pexserver.mooo.com/fullchain.pem
+      keyPath: /etc/letsencrypt/live/pexserver.mooo.com/privkey.pem
     webhook: "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
     target:
       host: localhost  # または 127.0.0.1、100.94.26.8 (Tailscale)など
