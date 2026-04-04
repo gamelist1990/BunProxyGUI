@@ -12,7 +12,7 @@ interface InstanceSettingsModalProps {
   onUpdateName: (name: string) => Promise<void>;
   onToggleAutoRestart: (enabled: boolean) => Promise<void>;
   onToggleAutoStart?: (enabled: boolean) => Promise<void>;
-  onUpdateInstance: (version: string) => Promise<void>;
+  onUpdateInstance: (version: string, forceReinstall?: boolean) => Promise<void>;
   availableVersions: string[];
   latestVersion: string;
   isUpdating?: boolean;
@@ -38,6 +38,9 @@ export function InstanceSettingsModal({
   const [autoStartChecked, setAutoStartChecked] = useState(autoStart ?? false);
   const [selectedVersion, setSelectedVersion] = useState("latest");
   const [isSaving, setIsSaving] = useState(false);
+  const resolvedSelectedVersion =
+    selectedVersion === "latest" ? latestVersion : selectedVersion;
+  const isReinstall = resolvedSelectedVersion === instanceVersion;
 
   useEffect(() => {
     setNameInput(instanceName);
@@ -97,13 +100,15 @@ export function InstanceSettingsModal({
   const handleUpdate = async () => {
     if (
       confirm(
-        `インスタンスをバージョン ${selectedVersion} にアップデートしますか？`
+        isReinstall
+          ? `インスタンスのバージョン ${resolvedSelectedVersion} を再インストールしますか？`
+          : `インスタンスをバージョン ${resolvedSelectedVersion} にアップデートしますか？`
       )
     ) {
       try {
         onClose();
       } finally {
-        void onUpdateInstance(selectedVersion);
+        void onUpdateInstance(selectedVersion, isReinstall);
       }
     }
   };
@@ -198,7 +203,9 @@ export function InstanceSettingsModal({
             >
               {isUpdating
                 ? t("updating") || "更新中..."
-                : t("updateNow") || "今すぐアップデート"}
+                : isReinstall
+                  ? t("reinstallNow") || "今すぐ再インストール"
+                  : t("updateNow") || "今すぐアップデート"}
             </button>
           </div>
         </div>

@@ -463,13 +463,9 @@ function App() {
 
   async function handleUpdateInstance(
     instanceId: string,
-    version: string = "latest"
+    version: string = "latest",
+    forceReinstall: boolean = false
   ) {
-    if (
-      !confirm(`インスタンスをバージョン ${version} にアップデートしますか？`)
-    )
-      return;
-
     try {
       setUpdatingInstances((prev) => {
         const next = new Map(prev);
@@ -477,7 +473,7 @@ function App() {
         return next;
       });
 
-      await updateInstance(instanceId, version);
+      await updateInstance(instanceId, version, forceReinstall);
     } catch (error) {
       setUpdatingInstances((prev) => {
         const next = new Map(prev);
@@ -737,6 +733,7 @@ function App() {
                 onClose={() => setSettingsModalOpen(false)}
                 instanceName={selectedInstanceData.name}
                 instanceVersion={selectedInstanceData.version}
+                autoStart={!!selectedInstanceData.autoStart}
                 autoRestart={!!selectedInstanceData.autoRestart}
                 onUpdateName={async (name) => {
                   await updateInstanceMetadata(selectedInstanceData.id, {
@@ -747,6 +744,20 @@ function App() {
                       ? prev.map((it) =>
                           it.id === selectedInstanceData.id
                             ? { ...it, name }
+                            : it
+                        )
+                      : prev
+                  );
+                }}
+                onToggleAutoStart={async (enabled) => {
+                  await updateInstanceMetadata(selectedInstanceData.id, {
+                    autoStart: enabled,
+                  });
+                  setInstances((prev) =>
+                    Array.isArray(prev)
+                      ? prev.map((it) =>
+                          it.id === selectedInstanceData.id
+                            ? { ...it, autoStart: enabled }
                             : it
                         )
                       : prev
@@ -766,8 +777,12 @@ function App() {
                       : prev
                   );
                 }}
-                onUpdateInstance={async (version) => {
-                  await handleUpdateInstance(selectedInstanceData.id, version);
+                onUpdateInstance={async (version, forceReinstall) => {
+                  await handleUpdateInstance(
+                    selectedInstanceData.id,
+                    version,
+                    !!forceReinstall
+                  );
                 }}
                 availableVersions={availableVersions}
                 latestVersion={latestVersion}

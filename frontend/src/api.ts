@@ -8,6 +8,7 @@ export interface BunProxyInstance {
   configPath: string;
   pid?: number;
   lastStarted?: string;
+  autoStart: boolean;
   autoRestart: boolean;
   downloadSource: {
     url: string;
@@ -38,6 +39,11 @@ export interface ListenerConfig {
     tcp?: number;
     udp?: number;
   };
+  targets?: Array<{
+    host?: string;
+    tcp?: number;
+    udp?: number;
+  }>;
 }
 
 export interface BunProxyConfig {
@@ -185,11 +191,11 @@ export async function fetchPlayerIPs(id: string): Promise<PlayerIPEntry[]> {
   return res.json();
 }
 
-export async function updateInstance(id: string, version: string): Promise<void> {
+export async function updateInstance(id: string, version: string, forceReinstall = false): Promise<void> {
   const res = await fetch(`${API_BASE}/instances/${id}/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ version }),
+    body: JSON.stringify({ version, forceReinstall }),
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: 'Failed to update instance' }));
@@ -197,7 +203,10 @@ export async function updateInstance(id: string, version: string): Promise<void>
   }
 }
 
-export async function updateInstanceMetadata(id: string, data: { name?: string; autoRestart?: boolean }): Promise<void> {
+export async function updateInstanceMetadata(
+  id: string,
+  data: { name?: string; autoStart?: boolean; autoRestart?: boolean }
+): Promise<void> {
   const res = await fetch(`${API_BASE}/instances/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

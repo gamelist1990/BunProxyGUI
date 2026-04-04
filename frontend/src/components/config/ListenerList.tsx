@@ -4,6 +4,26 @@ import { Button } from '../ui/Button';
 import type { ListenerConfig } from '../../api';
 import { t } from '../../lang';
 
+const createDefaultTarget = () => ({
+  host: 'localhost',
+  tcp: 19132,
+  udp: 19132,
+});
+
+const syncListenerTargets = (listener: ListenerConfig): ListenerConfig => {
+  const targets = listener.targets && listener.targets.length > 0
+    ? listener.targets
+    : listener.target
+      ? [listener.target]
+      : [];
+
+  return {
+    ...listener,
+    target: targets[0],
+    targets,
+  };
+};
+
 interface ListenerListProps {
   instanceId: string;
   listeners: ListenerConfig[];
@@ -13,16 +33,16 @@ interface ListenerListProps {
 export const ListenerList: React.FC<ListenerListProps> = ({ instanceId, listeners, onChange }) => {
   const handleListenerChange = (index: number, field: string, value: any) => {
     const newListeners = [...listeners];
-    newListeners[index] = { ...newListeners[index], [field]: value };
+    newListeners[index] = syncListenerTargets({ ...newListeners[index], [field]: value });
     onChange(newListeners);
   };
 
-  const handleTargetChange = (index: number, field: string, value: any) => {
+  const handleTargetsChange = (index: number, targets: NonNullable<ListenerConfig['targets']>) => {
     const newListeners = [...listeners];
-    newListeners[index] = {
+    newListeners[index] = syncListenerTargets({
       ...newListeners[index],
-      target: { ...newListeners[index].target, [field]: value },
-    };
+      targets,
+    });
     onChange(newListeners);
   };
 
@@ -41,11 +61,8 @@ export const ListenerList: React.FC<ListenerListProps> = ({ instanceId, listener
         keyPath: '',
       },
       webhook: '',
-      target: {
-        host: 'localhost',
-        tcp: 19132,
-        udp: 19132,
-      },
+      target: createDefaultTarget(),
+      targets: [createDefaultTarget()],
     });
     onChange(newListeners);
   };
@@ -78,9 +95,9 @@ export const ListenerList: React.FC<ListenerListProps> = ({ instanceId, listener
             key={index}
             instanceId={instanceId}
             index={index}
-            listener={listener}
+            listener={syncListenerTargets(listener)}
             onChange={(field, value) => handleListenerChange(index, field, value)}
-            onTargetChange={(field, value) => handleTargetChange(index, field, value)}
+            onTargetsChange={(targets) => handleTargetsChange(index, targets)}
             onRemove={listeners.length > 1 ? () => removeListener(index) : undefined}
           />
         ))

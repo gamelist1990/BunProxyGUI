@@ -11,50 +11,52 @@ interface ListenerItemProps {
   index: number;
   listener: ListenerConfig;
   onChange: (field: string, value: any) => void;
-  onTargetChange: (field: string, value: any) => void;
+  onTargetsChange: (targets: NonNullable<ListenerConfig['targets']>) => void;
   onRemove?: () => void;
 }
+
+const createEmptyTarget = () => ({
+  host: '',
+  tcp: undefined,
+  udp: undefined,
+});
+
+const parseOptionalPort = (value: string): number | undefined => {
+  if (value.trim() === '') {
+    return undefined;
+  }
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
 
 export const ListenerItem: React.FC<ListenerItemProps> = ({
   instanceId,
   index,
   listener,
   onChange,
-  onTargetChange,
+  onTargetsChange,
   onRemove,
 }) => {
-  const [certFile, setCertFile] = useState<File | null>(null);
-  const [keyFile, setKeyFile] = useState<File | null>(null);
+  const targets = listener.targets && listener.targets.length > 0
+    ? listener.targets
+    : listener.target
+      ? [listener.target]
+      : [createEmptyTarget()];
 
-  const normalizeNumericValue = (value: string) => {
-    if (value.trim() === '') {
-      return undefined;
-    }
-    const parsed = parseInt(value, 10);
-    return Number.isNaN(parsed) ? undefined : parsed;
+  const handleTargetChange = (targetIndex: number, field: 'host' | 'tcp' | 'udp', value: string | number | undefined) => {
+    const nextTargets = targets.map((target, index) => (
+      index === targetIndex ? { ...target, [field]: value } : target
+    ));
+    onTargetsChange(nextTargets);
   };
 
-  const handleTlsBundleUpload = async (certFile: File | null, keyFile: File | null) => {
-    if (!certFile || !keyFile) {
-      alert(t('selectCertAndKey') || 'Select both certificate and key files.');
-      return;
-    }
+  const addTarget = () => {
+    onTargetsChange([...targets, createEmptyTarget()]);
+  };
 
-    try {
-      const [certPem, keyPem] = await Promise.all([certFile.text(), keyFile.text()]);
-      const uploaded = await uploadListenerTlsAssets(instanceId, index, { certPem, keyPem });
-      onChange('https', {
-        ...listener.https,
-        enabled: true,
-        certPath: uploaded.certPath,
-        keyPath: uploaded.keyPath,
-      });
-      setCertFile(null);
-      setKeyFile(null);
-      alert(t('tlsUploadSuccess') || 'TLS files uploaded successfully.');
-    } catch (error: any) {
-      alert(`${t('tlsUploadFailed') || 'Failed to upload TLS files:'} ${error.message}`);
-    }
+  const removeTarget = (targetIndex: number) => {
+    const nextTargets = targets.filter((_, index) => index !== targetIndex);
+    onTargetsChange(nextTargets.length > 0 ? nextTargets : [createEmptyTarget()]);
   };
 
   return (
@@ -79,13 +81,13 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
           label="TCP Port"
           type="number"
           value={listener.tcp || ''}
-          onChange={(e) => onChange('tcp', normalizeNumericValue(e.target.value))}
+          onChange={(e) => onChange('tcp', parseOptionalPort(e.target.value))}
         />
         <Input
           label="UDP Port"
           type="number"
           value={listener.udp || ''}
-          onChange={(e) => onChange('udp', normalizeNumericValue(e.target.value))}
+          onChange={(e) => onChange('udp', parseOptionalPort(e.target.value))}
         />
       </div>
 
@@ -203,29 +205,55 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
       />
 
       <div className="ui-divider">
-        <span className="ui-divider-label">{t('targetServer') || 'Target Server'}</span>
+        <span className="ui-divider-label">{t('targetServers') || 'Target Servers'}</span>
       </div>
 
-      <div className="ui-grid">
-        <Input
-          label={t('targetHost') || 'Target Host'}
-          value={listener.target?.host || ''}
-          onChange={(e) => onTargetChange('host', e.target.value)}
-          placeholder="localhost"
-        />
-        <Input
-          label="Target TCP Port"
-          type="number"
-          value={listener.target?.tcp || ''}
-          onChange={(e) => onTargetChange('tcp', normalizeNumericValue(e.target.value))}
-        />
-        <Input
-          label="Target UDP Port"
-          type="number"
-          value={listener.target?.udp || ''}
-          onChange={(e) => onTargetChange('udp', normalizeNumericValue(e.target.value))}
-        />
-      </div>
+      <p className="text-sm text-secondary mb-4">
+        {t('fallbackOrder') || 'Targets are tried in order. If the first target fails, the next target is used.'}
+      </p>
+
+      {targets.map((target, targetIndex) => (
+        <div key={targetIndex} className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <strong className="text-primary">
+              {(t('targetServer') || 'Target Server')} #{targetIndex + 1}
+            </strong>
+            {targets.length > 1 && (
+              <Button
+                variant="danger"
+                onClick={() => removeTarget(targetIndex)}
+                style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem' }}
+              >
+                {t('removeTargetServer') || 'Remove Target'}
+              </Button>
+            )}
+          </div>
+          <div className="ui-grid">
+            <Input
+              label={t('targetHost') || 'Target Host'}
+              value={target.host || ''}
+              onChange={(e) => handleTargetChange(targetIndex, 'host', e.target.value)}
+              placeholder="localhost"
+            />
+            <Input
+              label="Target TCP Port"
+              type="number"
+              value={target.tcp || ''}
+              onChange={(e) => handleTargetChange(targetIndex, 'tcp', parseOptionalPort(e.target.value))}
+            />
+            <Input
+              label="Target UDP Port"
+              type="number"
+              value={target.udp || ''}
+              onChange={(e) => handleTargetChange(targetIndex, 'udp', parseOptionalPort(e.target.value))}
+            />
+          </div>
+        </div>
+      ))}
+
+      <Button variant="ghost" onClick={addTarget}>
+        + {t('addTargetServer') || 'Add Target Server'}
+      </Button>
     </Card>
   );
 };
