@@ -10,7 +10,7 @@ interface ListenerItemProps {
   instanceId: string;
   index: number;
   listener: ListenerConfig;
-  onChange: (field: string, value: any) => void;
+  onChange: <K extends keyof ListenerConfig>(field: K, value: ListenerConfig[K]) => void;
   onTargetsChange: (targets: NonNullable<ListenerConfig['targets']>) => void;
   onRemove?: () => void;
 }
@@ -37,6 +37,9 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
   onTargetsChange,
   onRemove,
 }) => {
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [keyFile, setKeyFile] = useState<File | null>(null);
+
   const targets = listener.targets && listener.targets.length > 0
     ? listener.targets
     : listener.target
@@ -44,8 +47,8 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
       : [createEmptyTarget()];
 
   const handleTargetChange = (targetIndex: number, field: 'host' | 'tcp' | 'udp', value: string | number | undefined) => {
-    const nextTargets = targets.map((target, index) => (
-      index === targetIndex ? { ...target, [field]: value } : target
+    const nextTargets = targets.map((target, currentIndex) => (
+      currentIndex === targetIndex ? { ...target, [field]: value } : target
     ));
     onTargetsChange(nextTargets);
   };
@@ -55,8 +58,34 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
   };
 
   const removeTarget = (targetIndex: number) => {
-    const nextTargets = targets.filter((_, index) => index !== targetIndex);
+    const nextTargets = targets.filter((_, currentIndex) => currentIndex !== targetIndex);
     onTargetsChange(nextTargets.length > 0 ? nextTargets : [createEmptyTarget()]);
+  };
+
+  const handleTlsBundleUpload = async () => {
+    if (!certFile || !keyFile) {
+      alert(t('selectCertAndKey') || 'Select both certificate and key files.');
+      return;
+    }
+
+    try {
+      const [certPem, keyPem] = await Promise.all([certFile.text(), keyFile.text()]);
+      const uploaded = await uploadListenerTlsAssets(instanceId, index, { certPem, keyPem });
+
+      onChange('https', {
+        ...listener.https,
+        enabled: true,
+        certPath: uploaded.certPath,
+        keyPath: uploaded.keyPath,
+      });
+
+      setCertFile(null);
+      setKeyFile(null);
+      alert(t('tlsUploadSuccess') || 'TLS files uploaded successfully.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`${t('tlsUploadFailed') || 'Failed to upload TLS files:'} ${message}`);
+    }
   };
 
   return (
@@ -106,7 +135,7 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
           onChange={(checked) => onChange('https', {
             enabled: checked,
             autoDetect: listener.https?.autoDetect ?? true,
-            letsEncryptDomain: listener.https?.letsEncryptDomain || 'pexserver.mooo.com',
+            letsEncryptDomain: listener.https?.letsEncryptDomain || '',
             certPath: listener.https?.certPath || '',
             keyPath: listener.https?.keyPath || '',
           })}
@@ -133,7 +162,7 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
                 enabled: true,
                 letsEncryptDomain: e.target.value,
               })}
-              placeholder="pexserver.mooo.com"
+              placeholder="example.com"
             />
           </div>
 
@@ -146,7 +175,7 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
                 enabled: true,
                 certPath: e.target.value,
               })}
-              placeholder="/etc/letsencrypt/live/pexserver.mooo.com/fullchain.pem"
+              placeholder="/etc/letsencrypt/live/example.com/fullchain.pem"
             />
             <Input
               label={t('tlsKeyPath') || 'TLS Private Key Path'}
@@ -156,7 +185,7 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
                 enabled: true,
                 keyPath: e.target.value,
               })}
-              placeholder="/etc/letsencrypt/live/pexserver.mooo.com/privkey.pem"
+              placeholder="/etc/letsencrypt/live/example.com/privkey.pem"
             />
           </div>
 
@@ -182,14 +211,11 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
               }}
             />
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              void handleTlsBundleUpload(certFile, keyFile);
-            }}
-          >
+
+          <Button variant="secondary" onClick={() => { void handleTlsBundleUpload(); }}>
             {t('uploadTlsFiles') || 'Upload TLS Files'}
           </Button>
+
           <p className="ui-help-text">
             {t('tlsUploadHint') || 'Uploading PEM files stores them inside this instance and fills the cert/key paths automatically.'}
           </p>
@@ -228,6 +254,7 @@ export const ListenerItem: React.FC<ListenerItemProps> = ({
               </Button>
             )}
           </div>
+
           <div className="ui-grid">
             <Input
               label={t('targetHost') || 'Target Host'}

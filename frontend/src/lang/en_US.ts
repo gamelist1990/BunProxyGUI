@@ -1,12 +1,9 @@
 export const en_US = {
-  // Header
   appTitle: 'BunProxy GUI',
   connected: '● Connected',
   disconnected: '○ Disconnected',
   checkUpdates: 'Check Updates',
   latest: 'Latest',
-
-  // Sidebar
   instances: 'Instances',
   createNewInstance: 'Create New Instance',
   instanceName: 'Instance name',
@@ -15,41 +12,27 @@ export const en_US = {
   latestVersion: 'Latest Version',
   createInstance: 'Create Instance',
   creating: 'Creating...',
-
-  // Platform options
   platformLinux: 'Linux',
   platformMacOS: 'macOS (ARM64)',
   platformWindows: 'Windows',
-
-  // Instance status
   running: '🟢 Running',
   stopped: '⚫ Stopped',
   initializing: '⚙️ Initializing...',
-
-  // Instance actions
   start: 'Start',
   stop: 'Stop',
   restart: 'Restart',
   delete: 'Delete',
-
-  // Content
   noSelection: 'Select an instance from the sidebar or create a new one',
   consoleLogs: 'Console Logs',
   configuration: 'Configuration',
   saveConfig: 'Save Config',
-
-  // Log types
   logStdout: 'stdout',
   logStderr: 'stderr',
   logSystem: 'system',
-
-  // Messages
   confirmDelete: 'Are you sure you want to delete this instance?',
   configSaved: 'Config saved successfully!',
   allUpToDate: 'All instances are up to date!',
   updatesAvailable: 'Updates available! Latest version:',
-
-  // Errors
   errorCreateInstance: 'Failed to create instance:',
   errorDeleteInstance: 'Failed to delete instance:',
   errorStartInstance: 'Failed to start instance:',
@@ -61,8 +44,6 @@ export const en_US = {
   errorLoadRelease: 'Failed to load latest release:',
   errorLoadLogs: 'Failed to load logs:',
   errorLoadConfig: 'Failed to load config:',
-
-  // Placeholders
   placeholderInstanceName: 'Instance name',
   placeholderVersion: 'Version (e.g., 0.0.9)',
   autoRestart: 'Auto restart on crash',
@@ -71,8 +52,6 @@ export const en_US = {
   save: 'Save',
   cancel: 'Cancel',
   settings: 'Settings',
-
-  // Instance Settings Modal
   instanceSettings: 'Instance Settings',
   updateVersion: 'Update Version',
   currentVersion: 'Current Version',
@@ -82,8 +61,6 @@ export const en_US = {
   saving: 'Saving...',
   autoRestartDescription: 'Automatically restart the instance if it stops unexpectedly',
   autoStartDescription: 'Automatically start the instance when the system boots',
-
-  // Auth
   login: 'Login',
   logout: 'Logout',
   username: 'Username',
@@ -105,8 +82,6 @@ export const en_US = {
   securitySetup: 'Security Setup',
   noAuthConfigured: 'No authentication configured',
   setupAuthPrompt: 'Please set up a username and password to prevent unauthorized access.',
-
-  // Config Editor
   generalSettings: 'General Settings',
   endpointPort: 'Endpoint Port',
   enableRestApi: 'Enable REST API',
