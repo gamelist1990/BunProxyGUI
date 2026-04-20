@@ -34,16 +34,19 @@ export interface ListenerConfig {
     keyPath?: string;
   };
   webhook?: string;
-  target?: {
-    host?: string;
-    tcp?: number;
-    udp?: number;
-  };
-  targets?: Array<{
-    host?: string;
-    tcp?: number;
-    udp?: number;
+  target?: ProxyTargetConfig;
+  targets?: ProxyTargetConfig[];
+  httpMappings?: Array<{
+    path?: string;
+    target?: ProxyTargetConfig;
+    targets?: ProxyTargetConfig[];
   }>;
+}
+
+export interface ProxyTargetConfig {
+    host?: string;
+    tcp?: number;
+    udp?: number;
 }
 
 export interface BunProxyConfig {
